@@ -11,10 +11,17 @@ interface CustomerDetailPageProps {
 }
 
 const RatingStar = ({ rating }: { rating: number }) => (
-  <span className="text-yellow-400 text-sm tracking-tight font-sans">
-    {'★'.repeat(rating)}
-    <span className="text-gray-300">{'★'.repeat(5 - rating)}</span>
-  </span>
+  <div className="flex items-center gap-1.5">
+    <span className="text-yellow-400 text-sm tracking-tight font-sans drop-shadow-sm">
+      {'★'.repeat(rating)}
+      <span className="text-gray-300">{'★'.repeat(5 - rating)}</span>
+    </span>
+    {rating >= 4 && (
+      <span className="text-[8px] bg-amber-50 text-amber-600 border border-amber-200/60 px-1.5 py-0.5 rounded font-black tracking-wide flex items-center gap-0.5 shadow-sm animate-pulse-slow">
+        ✨ คะแนนดีเยี่ยม
+      </span>
+    )}
+  </div>
 );
 
 export default function CustomerDetailPage({
@@ -62,7 +69,7 @@ export default function CustomerDetailPage({
         
         <button
           onClick={onAddFollowUp}
-          className="bg-primary hover:bg-primary-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2"
+          className="bg-primary hover:bg-primary-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 hover-shimmer"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

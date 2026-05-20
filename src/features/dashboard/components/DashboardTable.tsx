@@ -56,13 +56,17 @@ export default function DashboardTable({ customers, onSelectCustomer }: Dashboar
                 <tr 
                   key={c.id} 
                   onClick={() => onSelectCustomer(c.id)}
-                  className={`cursor-pointer transition-all duration-150 border-l-4 ${
+                  className={`group cursor-pointer transition-all duration-300 border-l-4 ${
                     isOverdue 
-                      ? 'border-l-status-overdue bg-red-50/20 hover:bg-red-50/50' 
+                      ? 'border-l-status-overdue bg-red-50/10 hover:bg-red-50/30' 
                       : 'border-l-transparent hover:bg-slate-50/80 hover:text-primary-dark'
                   }`}
                 >
-                  <td className="px-6 py-4 font-bold text-gray-900 font-display text-sm">{c.name}</td>
+                  <td className="px-6 py-4 font-bold text-gray-900 font-display text-sm">
+                    <div className="transform group-hover:translate-x-1.5 transition-transform duration-300 ease-out">
+                      {c.name}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-gray-500 font-mono">{c.phone}</td>
                   <td className="px-6 py-4 text-gray-800 font-bold">{c.product}</td>
                   <td className="px-6 py-4 text-gray-600">{c.branch}</td>
@@ -71,9 +75,9 @@ export default function DashboardTable({ customers, onSelectCustomer }: Dashboar
                     <StatusBadge status={c.status} />
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <span className="text-primary hover:text-primary-dark inline-flex items-center gap-1 font-bold group">
+                    <span className="text-primary hover:text-primary-dark inline-flex items-center gap-1 font-bold">
                       ดูประวัติ
-                      <svg className="w-3.5 h-3.5 transform group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <svg className="w-3.5 h-3.5 transform group-hover:translate-x-1.5 transition-transform duration-300 ease-out" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
                     </span>

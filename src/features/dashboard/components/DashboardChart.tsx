@@ -177,14 +177,14 @@ export default function DashboardChart({ customers, feedbacks }: DashboardChartP
               <svg className="w-full h-full" viewBox="0 0 400 120" preserveAspectRatio="none">
                 <defs>
                   <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#1A56DB" stopOpacity="0.2" />
-                    <stop offset="100%" stopColor="#1A56DB" stopOpacity="0.0" />
+                    <stop offset="0%" stopColor="#0051BA" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#0051BA" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
                 <path 
                   d="M 50 80 Q 150 60 250 90 T 350 40" 
                   fill="none" 
-                  stroke="#1A56DB" 
+                  stroke="#0051BA" 
                   strokeWidth="3" 
                   strokeLinecap="round"
                 />
@@ -192,10 +192,10 @@ export default function DashboardChart({ customers, feedbacks }: DashboardChartP
                   d="M 50 80 Q 150 60 250 90 T 350 40 L 350 120 L 50 120 Z" 
                   fill="url(#chartGrad)" 
                 />
-                <circle cx="50" cy="80" r="4" fill="#1A56DB" stroke="white" strokeWidth="1" />
-                <circle cx="150" cy="65" r="4" fill="#1A56DB" stroke="white" strokeWidth="1" />
-                <circle cx="250" cy="83" r="4" fill="#1A56DB" stroke="white" strokeWidth="1" />
-                <circle cx="350" cy="40" r="5" fill="#1A56DB" stroke="white" strokeWidth="1" />
+                <circle cx="50" cy="80" r="4" fill="#0051BA" stroke="white" strokeWidth="1" />
+                <circle cx="150" cy="65" r="4" fill="#0051BA" stroke="white" strokeWidth="1" />
+                <circle cx="250" cy="83" r="4" fill="#0051BA" stroke="white" strokeWidth="1" />
+                <circle cx="350" cy="40" r="5" fill="#0051BA" stroke="white" strokeWidth="1" />
               </svg>
 
               <div className="absolute left-[3%] top-[55%] -translate-y-1/2 bg-slate-900 text-white text-[9px] px-1 py-0.5 rounded font-bold">สัปดาห์ 1: 4.0 ★</div>
