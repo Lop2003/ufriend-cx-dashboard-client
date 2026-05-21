@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import useCX from '../../../hooks/useCX';
+import { fetchBranchStats } from '../../../services/api';
 
 export default function DashboardChart() {
-  const { filteredCustomers, filteredFeedbacks } = useCX();
+  const { filteredCustomers, filteredFeedbacks, isApiConnected } = useCX();
   const [activeTab, setActiveTab] = useState<'branch' | 'sentiment' | 'weekly'>('branch');
   const [animate, setAnimate] = useState(false);
   const [pieProgress, setPieProgress] = useState(0);
@@ -46,14 +47,25 @@ export default function DashboardChart() {
     };
   }, [activeTab]);
 
-  // --- Dynamic Branch Data ---
+  // --- Dynamic Branch Data (API-first, fallback to client) ---
+  const [apiBranchData, setApiBranchData] = useState<{ name: string; count: number }[] | null>(null);
+
+  useEffect(() => {
+    if (!isApiConnected) return;
+    fetchBranchStats()
+      .then((stats) => {
+        setApiBranchData(stats.map(s => ({ name: s.branch, count: s.customer_count })));
+      })
+      .catch(() => setApiBranchData(null));
+  }, [isApiConnected, filteredCustomers]);
+
   const branchCounts = useMemo(() => {
-    const branches = ['ลาดพร้าว', 'เชียงใหม่ นิมาน', 'ขอนแก่น มข.', 'หาดใหญ่ เซ็นทรัล', 'ชลบุรี อมตะ'];
-    return branches.map(br => ({
-      name: br,
-      count: filteredCustomers.filter(c => c.branch === br).length
-    }));
-  }, [filteredCustomers]);
+    if (apiBranchData) return apiBranchData;
+    // Fallback: compute from client-side data
+    const branchMap = new Map<string, number>();
+    filteredCustomers.forEach(c => branchMap.set(c.branch, (branchMap.get(c.branch) || 0) + 1));
+    return Array.from(branchMap.entries()).map(([name, count]) => ({ name, count }));
+  }, [apiBranchData, filteredCustomers]);
 
   const maxCount = useMemo(() => {
     const counts = branchCounts.map(b => b.count);

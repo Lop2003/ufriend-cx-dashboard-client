@@ -83,16 +83,20 @@ export function CXProvider({ children }: CXProviderProps) {
   };
 
   // ─── Fetch All Data from API (with fallback to mock) ───────────────
+  const [apiSummary, setApiSummary] = useState<api.SummaryData | null>(null);
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setApiError(null);
     try {
-      const [customersData, feedbacksData] = await Promise.all([
+      const [customersData, feedbacksData, summaryData] = await Promise.all([
         api.fetchCustomers(),
         api.fetchFeedbacks(),
+        api.fetchSummary(),
       ]);
       setCustomers(customersData);
       setFeedbacks(feedbacksData);
+      setApiSummary(summaryData);
       setIsApiConnected(true);
 
       // Set default selected customer if none selected
@@ -104,6 +108,7 @@ export function CXProvider({ children }: CXProviderProps) {
       setCustomers(initialCustomers);
       setFeedbacks(initialFeedbacks);
       setFollowUps(initialFollowUps);
+      setApiSummary(null);
       setIsApiConnected(false);
       setApiError('ไม่สามารถเชื่อมต่อ API ได้ — กำลังใช้ข้อมูลตัวอย่าง (Mock Data)');
 
@@ -140,19 +145,29 @@ export function CXProvider({ children }: CXProviderProps) {
     return feedbacks.filter((fb) => customerIds.has(fb.customer_id));
   }, [feedbacks, filteredCustomers]);
 
-  // Memoized stats based on filtered data
+  // Memoized stats — use API summary when no filters active, else compute client-side
+  const hasFilters = searchQuery !== '' || selectedBranch !== '' || selectedStatus !== '';
+
   const summaryStats = useMemo(() => {
+    // If API summary available and no filters active, use server-computed stats
+    if (apiSummary && !hasFilters) {
+      const satisfactionRate = filteredFeedbacks.length > 0
+        ? ((filteredFeedbacks.filter(fb => fb.sentiment === 'positive').length / filteredFeedbacks.length) * 100).toFixed(0)
+        : '0';
+      return {
+        totalCustomers: apiSummary.total_customers,
+        avgRating: apiSummary.avg_rating.toFixed(1),
+        overdueCount: apiSummary.overdue_count,
+        satisfactionRate,
+      };
+    }
+
+    // Filtered mode: compute from client-side data
     const totalCustomers = filteredCustomers.length;
-    
-    // Average rating of feedbacks for filtered customers
     const avgRating = filteredFeedbacks.length > 0 
       ? (filteredFeedbacks.reduce((acc, fb) => acc + fb.rating, 0) / filteredFeedbacks.length).toFixed(1)
       : '0.0';
-
-    // Overdue count of filtered customers
     const overdueCount = filteredCustomers.filter(c => c.status === 'overdue').length;
-
-    // Satisfaction rate (positive sentiment percentage) of filtered customers
     const positiveFeedbacks = filteredFeedbacks.filter(fb => fb.sentiment === 'positive').length;
     const satisfactionRate = filteredFeedbacks.length > 0
       ? ((positiveFeedbacks / filteredFeedbacks.length) * 100).toFixed(0)
@@ -164,7 +179,7 @@ export function CXProvider({ children }: CXProviderProps) {
       overdueCount,
       satisfactionRate,
     };
-  }, [filteredCustomers, filteredFeedbacks]);
+  }, [apiSummary, hasFilters, filteredCustomers, filteredFeedbacks]);
 
   // Add Feedback Action — POST to API then refetch
   const addFeedback = async (newFb: Omit<Feedback, 'id' | 'sentiment' | 'created_at'>) => {

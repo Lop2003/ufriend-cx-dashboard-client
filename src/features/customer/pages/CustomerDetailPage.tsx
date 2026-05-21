@@ -1,5 +1,9 @@
+import { useState, useEffect } from 'react';
 import useCX from '../../../hooks/useCX';
 import CustomerInfo from '../components/CustomerInfo';
+import { fetchCustomerDetail, updateFollowUpStatus } from '../../../services/api';
+import { showToast } from '../../../components/Toast';
+import type { Feedback, FollowUp } from '../../../types';
 
 interface CustomerDetailPageProps {
   onBack?: () => void;
@@ -50,8 +54,43 @@ export default function CustomerDetailPage({
     feedbacks, 
     followUps, 
     setCurrentPage, 
-    setIsDetailModalOpen 
+    setIsDetailModalOpen,
+    isApiConnected,
   } = useCX();
+
+  // API-fetched detail state
+  const [apiDetail, setApiDetail] = useState<{
+    feedbacks: Feedback[];
+    follow_ups: FollowUp[];
+  } | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  // Fetch from API when customer is selected
+  useEffect(() => {
+    if (!selectedCustomerId || !isApiConnected) return;
+
+    let cancelled = false;
+    setDetailLoading(true);
+
+    fetchCustomerDetail(selectedCustomerId)
+      .then((data) => {
+        if (!cancelled) {
+          setApiDetail({
+            feedbacks: data.feedbacks || [],
+            follow_ups: data.follow_ups || [],
+          });
+        }
+      })
+      .catch(() => {
+        // Silently fall back to context data
+        if (!cancelled) setApiDetail(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [selectedCustomerId, isApiConnected]);
 
   const customer = customers.find((c) => c.id === selectedCustomerId);
 
@@ -86,11 +125,23 @@ export default function CustomerDetailPage({
     );
   }
 
-  const customerFeedbacks = feedbacks.filter((fb) => fb.customer_id === customer.id);
-  const customerFollowUps = followUps.filter((fu) => fu.customer_id === customer.id);
+  // Use API data if available, else fall back to context data
+  const customerFeedbacks = apiDetail
+    ? apiDetail.feedbacks
+    : feedbacks.filter((fb) => fb.customer_id === customer.id);
+  const customerFollowUps = apiDetail
+    ? apiDetail.follow_ups
+    : followUps.filter((fu) => fu.customer_id === customer.id);
 
   return (
     <div className="space-y-6 font-body text-slate-800 antialiased">
+      {/* API Detail Loading Indicator */}
+      {detailLoading && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700 font-bold animate-pulse">
+          <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+          กำลังโหลดข้อมูลเชิงลึกจาก API...
+        </div>
+      )}
       {/* Top action bar */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <button
@@ -220,13 +271,33 @@ export default function CustomerDetailPage({
 
                       <div className="flex items-center justify-between pt-1">
                         <span className="text-[10px] text-gray-400 font-bold">โดย: ฝ่ายบริการลูกค้า uFriend</span>
-                        <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-lg border ${
-                          fu.status === 'done'
-                            ? 'bg-emerald-50 text-status-active border-emerald-100/50'
-                            : 'bg-red-50 text-status-overdue border-red-100/50 animate-pulse-slow'
-                        }`}>
-                          {fu.status === 'done' ? 'สำเร็จแล้ว' : 'รอดำเนินการ'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {fu.status === 'pending' && isApiConnected && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await updateFollowUpStatus(fu.id, 'done');
+                                  showToast('success', 'อัพเดทสถานะเรียบร้อยแล้ว ✅');
+                                  // Refetch detail to update UI
+                                  const updated = await fetchCustomerDetail(selectedCustomerId);
+                                  setApiDetail({ feedbacks: updated.feedbacks || [], follow_ups: updated.follow_ups || [] });
+                                } catch {
+                                  showToast('error', 'ไม่สามารถอัพเดทสถานะได้');
+                                }
+                              }}
+                              className="text-[9px] font-bold px-2 py-0.5 rounded-lg border bg-primary-light text-primary border-primary/20 hover:bg-primary hover:text-white transition-all cursor-pointer"
+                            >
+                              ✔ เสร็จแล้ว
+                            </button>
+                          )}
+                          <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-lg border ${
+                            fu.status === 'done'
+                              ? 'bg-emerald-50 text-status-active border-emerald-100/50'
+                              : 'bg-red-50 text-status-overdue border-red-100/50 animate-pulse-slow'
+                          }`}>
+                            {fu.status === 'done' ? 'สำเร็จแล้ว' : 'รอดำเนินการ'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>

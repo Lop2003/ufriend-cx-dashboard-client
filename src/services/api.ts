@@ -93,3 +93,10 @@ export async function createFollowUp(payload: CreateFollowUpPayload): Promise<Fo
     body: JSON.stringify(payload),
   });
 }
+
+export async function updateFollowUpStatus(id: string, status: 'pending' | 'done'): Promise<FollowUp> {
+  return request<FollowUp>(`/api/follow-ups/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
