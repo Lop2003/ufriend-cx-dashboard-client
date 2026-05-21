@@ -46,7 +46,7 @@ export default function FollowUpForm({ selectedCustomerId, customers, onSubmit, 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6 font-body text-slate-800 antialiased">
+    <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-white/60 shadow-[6px_6px_15px_rgba(163,177,198,0.35),-6px_-6px_15px_rgba(255,255,255,0.8)] p-8 space-y-6 font-body text-slate-800 antialiased">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">

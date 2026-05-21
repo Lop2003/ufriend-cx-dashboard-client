@@ -35,7 +35,7 @@ export default function DashboardChart({ customers, feedbacks }: DashboardChartP
   ];
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6 font-body text-slate-800">
+    <div className="bg-white p-6 rounded-3xl border border-white/60 shadow-[6px_6px_15px_rgba(163,177,198,0.35),-6px_-6px_15px_rgba(255,255,255,0.8)] mb-6 font-body text-slate-800">
       {/* Header and navigation tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 pb-6 border-b border-gray-100 gap-4">
         <div className="flex items-center gap-3">

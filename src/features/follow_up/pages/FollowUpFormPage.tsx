@@ -10,7 +10,7 @@ interface FollowUpFormPageProps {
 
 export default function FollowUpFormPage({ selectedCustomerId, customers, onSubmit, onCancel }: FollowUpFormPageProps) {
   return (
-    <div className="max-w-2xl mx-auto space-y-6 font-body">
+    <div className="max-w-5xl mx-auto space-y-6 font-body">
       <div className="flex items-center justify-between">
         <button
           onClick={onCancel}

@@ -4,13 +4,23 @@ interface CustomerInfoProps {
   customer: Customer;
 }
 
-const StatusBadgeDetail = ({ status }: { status: string }) => {
-  const map: Record<string, { label: string; className: string }> = {
-    active:    { label: 'ผ่อนชำระปกติ (Active)',    className: 'bg-status-active-bg text-status-active font-medium' },
-    overdue:   { label: 'ค้างชำระค่างวดสัญญา (Overdue)',    className: 'bg-status-overdue-bg text-status-overdue font-extrabold animate-pulse-slow' },
-    completed: { label: 'ปิดสัญญาผ่อนชำระแล้ว (Completed)', className: 'bg-status-completed-bg text-status-completed font-medium' },
-  };
-  const s = map[status] ?? map.completed;
+const STATUS_DETAIL_MAP = {
+  active: {
+    label: 'ผ่อนชำระปกติ (Active)',
+    className: 'bg-status-active-bg text-status-active font-medium',
+  },
+  overdue: {
+    label: 'ค้างชำระค่างวดสัญญา (Overdue)',
+    className: 'bg-status-overdue-bg text-status-overdue font-extrabold animate-pulse-slow',
+  },
+  completed: {
+    label: 'ปิดสัญญาผ่อนชำระแล้ว (Completed)',
+    className: 'bg-status-completed-bg text-status-completed font-medium',
+  },
+} as const;
+
+const StatusBadgeDetail = ({ status }: { status: Customer['status'] }) => {
+  const s = STATUS_DETAIL_MAP[status] ?? STATUS_DETAIL_MAP.completed;
   return (
     <span className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide border border-current/10 ${s.className}`}>
       {s.label}

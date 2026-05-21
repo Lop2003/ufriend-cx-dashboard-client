@@ -5,13 +5,23 @@ interface DashboardTableProps {
   onSelectCustomer: (id: string) => void;
 }
 
-const StatusBadge = ({ status }: { status: string }) => {
-  const map: Record<string, { label: string; className: string }> = {
-    active:    { label: 'ผ่อนชำระปกติ',    className: 'bg-emerald-50 text-status-active border border-emerald-200/50 font-bold' },
-    overdue:   { label: 'ค้างชำระค่างวด',    className: 'bg-red-50 text-status-overdue border border-red-200/60 font-black animate-pulse-slow' },
-    completed: { label: 'ผ่อนชำระสำเร็จ', className: 'bg-slate-50 text-status-completed border border-slate-200/50 font-bold' },
-  };
-  const s = map[status] ?? map.completed;
+const STATUS_MAP = {
+  active: {
+    label: 'ผ่อนชำระปกติ',
+    className: 'bg-emerald-50 text-status-active border border-emerald-200/50 font-bold',
+  },
+  overdue: {
+    label: 'ค้างชำระค่างวด',
+    className: 'bg-red-50 text-status-overdue border border-red-200/60 font-black animate-pulse-slow',
+  },
+  completed: {
+    label: 'ผ่อนชำระสำเร็จ',
+    className: 'bg-slate-50 text-status-completed border border-slate-200/50 font-bold',
+  },
+} as const;
+
+const StatusBadge = ({ status }: { status: Customer['status'] }) => {
+  const s = STATUS_MAP[status] ?? STATUS_MAP.completed;
   return (
     <span className={`px-2.5 py-1 rounded-lg text-[10px] tracking-wide uppercase ${s.className}`}>
       {s.label}
@@ -32,7 +42,7 @@ export default function DashboardTable({ customers, onSelectCustomer }: Dashboar
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden font-body">
+    <div className="bg-white rounded-3xl border border-white/60 shadow-[6px_6px_15px_rgba(163,177,198,0.35),-6px_-6px_15px_rgba(255,255,255,0.8)] overflow-hidden font-body">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100 text-left">
           {/* Table Header */}
@@ -47,18 +57,18 @@ export default function DashboardTable({ customers, onSelectCustomer }: Dashboar
               <th scope="col" className="px-6 py-4 text-right">การจัดการ</th>
             </tr>
           </thead>
-          
+
           {/* Table Body */}
           <tbody className="bg-white divide-y divide-gray-100 text-xs font-semibold text-gray-700">
             {customers.map((c) => {
               const isOverdue = c.status === 'overdue';
               return (
-                <tr 
-                  key={c.id} 
+                <tr
+                  key={c.id}
                   onClick={() => onSelectCustomer(c.id)}
                   className={`group cursor-pointer transition-all duration-300 border-l-4 ${
-                    isOverdue 
-                      ? 'border-l-status-overdue bg-red-50/10 hover:bg-red-50/30' 
+                    isOverdue
+                      ? 'border-l-status-overdue bg-red-50/10 hover:bg-red-50/30'
                       : 'border-l-transparent hover:bg-slate-50/80 hover:text-primary-dark'
                   }`}
                 >

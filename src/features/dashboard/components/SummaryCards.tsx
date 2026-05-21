@@ -3,9 +3,10 @@ import { Customer, Feedback } from '../../../types';
 interface SummaryCardsProps {
   customers: Customer[];
   feedbacks: Feedback[];
+  vertical?: boolean;
 }
 
-export default function SummaryCards({ customers, feedbacks }: SummaryCardsProps) {
+export default function SummaryCards({ customers, feedbacks, vertical }: SummaryCardsProps) {
   const totalCustomers = customers.length;
   
   // Calculate average rating
@@ -23,7 +24,7 @@ export default function SummaryCards({ customers, feedbacks }: SummaryCardsProps
     : '0';
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6 font-body">
+    <div className={vertical ? "flex flex-col gap-5 font-body" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6 font-body"}>
       {/* 🔵 ลูกค้าทั้งหมด */}
       <div className="bg-gradient-to-br from-blue-50/90 to-blue-100/40 border border-blue-200/60 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between h-32 relative overflow-hidden group">
         <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/10 transition-colors duration-500"></div>

@@ -9,7 +9,7 @@ interface AddFeedbackPageProps {
 
 export default function AddFeedbackPage({ customers, onSubmit, onCancel }: AddFeedbackPageProps) {
   return (
-    <div className="max-w-2xl mx-auto space-y-6 font-body">
+    <div className="max-w-5xl mx-auto space-y-6 font-body">
       <div className="flex items-center justify-between">
         <button
           onClick={onCancel}
