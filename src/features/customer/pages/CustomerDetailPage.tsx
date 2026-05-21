@@ -1,13 +1,9 @@
-import { Customer, Feedback, FollowUp } from '../../../types';
+import useCX from '../../../hooks/useCX';
 import CustomerInfo from '../components/CustomerInfo';
 
 interface CustomerDetailPageProps {
-  customerId: string;
-  customers: Customer[];
-  feedbacks: Feedback[];
-  followUps: FollowUp[];
-  onBack: () => void;
-  onAddFollowUp: () => void;
+  onBack?: () => void;
+  onAddFollowUp?: () => void;
 }
 
 // Mappers for translating data values to beautiful Thai labels
@@ -45,26 +41,46 @@ const RatingStar = ({ rating }: { rating: number }) => (
 );
 
 export default function CustomerDetailPage({
-  customerId,
-  customers,
-  feedbacks,
-  followUps,
   onBack,
   onAddFollowUp,
 }: CustomerDetailPageProps) {
-  const customer = customers.find((c) => c.id === customerId);
+  const { 
+    selectedCustomerId, 
+    customers, 
+    feedbacks, 
+    followUps, 
+    setCurrentPage, 
+    setIsDetailModalOpen 
+  } = useCX();
+
+  const customer = customers.find((c) => c.id === selectedCustomerId);
+
+  // Fallback handlers
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      setCurrentPage('dashboard');
+    }
+  };
+
+  const handleAddFollowUp = () => {
+    if (onAddFollowUp) {
+      onAddFollowUp();
+    } else {
+      setIsDetailModalOpen(false);
+      setCurrentPage('add-followup');
+    }
+  };
 
   if (!customer) {
     return (
       <div className="space-y-4 font-body text-slate-800">
-        <button onClick={onBack} className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
+        <button onClick={handleBack} className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
           ← ย้อนกลับไปแดชบอร์ด
         </button>
         <div className="text-gray-400 text-sm py-12 text-center bg-white border border-gray-200 rounded-xl">
           ไม่พบข้อมูลลูกค้า
-        </div>
-        <div className="text-status-overdue text-sm py-4 text-center bg-status-overdue-bg/50 border border-status-overdue/20 rounded-xl">
-          โหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่
         </div>
       </div>
     );
@@ -78,7 +94,7 @@ export default function CustomerDetailPage({
       {/* Top action bar */}
       <div className="flex items-center justify-between">
         <button
-          onClick={onBack}
+          onClick={handleBack}
           className="text-xs font-bold text-primary hover:text-primary-dark transition-all flex items-center gap-1.5 font-display"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -88,7 +104,7 @@ export default function CustomerDetailPage({
         </button>
 
         <button
-          onClick={onAddFollowUp}
+          onClick={handleAddFollowUp}
           className="bg-primary hover:bg-primary-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 hover-shimmer"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -172,18 +188,23 @@ export default function CustomerDetailPage({
               ยังไม่มีบันทึกประวัติการโทรหรือติดตามลูกค้า
             </div>
           ) : (
-            <div className="relative pl-6 border-l-2 border-slate-100 space-y-6 max-h-[400px] overflow-y-auto pr-1 py-2 ml-3">
-              {customerFollowUps.map((fu) => {
+            <div className="relative space-y-6 max-h-[400px] overflow-y-auto pr-1 py-2 pl-1 ml-1">
+              {customerFollowUps.map((fu, idx) => {
                 const typeMeta = FOLLOW_UP_TYPE_MAP[fu.type] || FOLLOW_UP_TYPE_MAP.general;
 
                 return (
-                  <div key={fu.id} className="relative group">
-                    {/* Absolutely Positioned Node Circle */}
-                    <span className={`absolute -left-[33px] top-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center shadow-sm z-10 ${typeMeta.nodeColor}`}>
+                  <div key={fu.id} className="relative pl-8 group">
+                    {/* Vertical connecting line connecting circles between items */}
+                    {idx !== customerFollowUps.length - 1 && (
+                      <div className="absolute left-[7px] top-5 -bottom-7 w-0.5 bg-slate-200/60 pointer-events-none z-0"></div>
+                    )}
+
+                    {/* Absolutely Positioned Node Circle inside padding viewport */}
+                    <span className={`absolute left-0 top-1.5 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center shadow-sm z-10 ${typeMeta.nodeColor}`}>
                       <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
                     </span>
 
-                    <div className="p-4 rounded-xl bg-slate-50 border border-gray-100 group-hover:border-gray-200 transition-all space-y-3 relative">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-gray-100 group-hover:border-gray-200 transition-all space-y-3 relative z-10 shadow-sm">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
                           {typeMeta.label}

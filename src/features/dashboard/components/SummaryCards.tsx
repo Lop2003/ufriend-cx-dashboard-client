@@ -1,27 +1,11 @@
-import { Customer, Feedback } from '../../../types';
+import useCX from '../../../hooks/useCX';
 
 interface SummaryCardsProps {
-  customers: Customer[];
-  feedbacks: Feedback[];
   vertical?: boolean;
 }
 
-export default function SummaryCards({ customers, feedbacks, vertical }: SummaryCardsProps) {
-  const totalCustomers = customers.length;
-  
-  // Calculate average rating
-  const avgRating = feedbacks.length > 0 
-    ? (feedbacks.reduce((acc, fb) => acc + fb.rating, 0) / feedbacks.length).toFixed(1)
-    : '0.0';
-
-  // Count overdue status
-  const overdueCount = customers.filter(c => c.status === 'overdue').length;
-
-  // Calculate % พอใจ (Satisfaction Percentage - positive sentiment ratio)
-  const positiveFeedbacks = feedbacks.filter(fb => fb.sentiment === 'positive').length;
-  const satisfactionRate = feedbacks.length > 0
-    ? ((positiveFeedbacks / feedbacks.length) * 100).toFixed(0)
-    : '0';
+export default function SummaryCards({ vertical }: SummaryCardsProps) {
+  const { summaryStats } = useCX();
 
   return (
     <div className={vertical ? "flex flex-col gap-5 font-body" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6 font-body"}>
@@ -37,7 +21,9 @@ export default function SummaryCards({ customers, feedbacks, vertical }: Summary
           </div>
         </div>
         <div className="relative z-10">
-          <h2 className="text-primary-dark text-3xl font-extrabold tracking-tight mt-1">{totalCustomers} <span className="text-xs font-semibold text-primary/70">ราย</span></h2>
+          <h2 className="text-primary-dark text-3xl font-extrabold tracking-tight mt-1">
+            {summaryStats.totalCustomers} <span className="text-xs font-semibold text-primary/70">ราย</span>
+          </h2>
           <p className="text-[10px] text-primary/80 font-bold mt-1.5 flex items-center gap-1">
             <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>
             จำนวนลูกค้าสัมพันธ์ทั้งหมดในระบบ
@@ -57,7 +43,9 @@ export default function SummaryCards({ customers, feedbacks, vertical }: Summary
           </div>
         </div>
         <div className="relative z-10">
-          <h2 className="text-amber-800 text-3xl font-extrabold tracking-tight mt-1">{avgRating} <span className="text-xs font-semibold text-amber-700/70">/ 5.0</span></h2>
+          <h2 className="text-amber-800 text-3xl font-extrabold tracking-tight mt-1">
+            {summaryStats.avgRating} <span className="text-xs font-semibold text-amber-700/70">/ 5.0</span>
+          </h2>
           <p className="text-[10px] text-amber-700/80 font-bold mt-1.5 flex items-center gap-1">
             <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
             คะแนนความพึงพอใจเฉลี่ยสะสม
@@ -65,7 +53,7 @@ export default function SummaryCards({ customers, feedbacks, vertical }: Summary
         </div>
       </div>
 
-      {/* 🔴 ค้างชำระ - เด่นและมีลูกเล่น Glow เคลื่อนไหวที่สุด */}
+      {/* 🔴 ค้างชำระ */}
       <div className="bg-gradient-to-br from-red-50 to-red-100/50 border-2 border-red-200 rounded-2xl p-5 shadow-sm hover:-translate-y-1 transition-all duration-300 pulse-overdue-glow flex flex-col justify-between h-32 relative overflow-hidden group">
         <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-status-overdue/5 rounded-full blur-xl"></div>
         <div className="flex items-center justify-between relative z-10">
@@ -80,7 +68,9 @@ export default function SummaryCards({ customers, feedbacks, vertical }: Summary
           </div>
         </div>
         <div className="relative z-10">
-          <h2 className="text-status-overdue text-3xl font-black tracking-tight mt-1">{overdueCount} <span className="text-xs font-bold text-status-overdue/70">ราย</span></h2>
+          <h2 className="text-status-overdue text-3xl font-black tracking-tight mt-1">
+            {summaryStats.overdueCount} <span className="text-xs font-bold text-status-overdue/70">ราย</span>
+          </h2>
           <p className="text-[10px] text-status-overdue font-black mt-1.5 flex items-center gap-1">
             🚨 ต้องเร่งโทรเจรจาติดตามหนี้ด่วน
           </p>
@@ -99,7 +89,9 @@ export default function SummaryCards({ customers, feedbacks, vertical }: Summary
           </div>
         </div>
         <div className="relative z-10">
-          <h2 className="text-status-active text-3xl font-extrabold tracking-tight mt-1">{satisfactionRate}% <span className="text-xs font-semibold text-status-active/70">ของลูกค้า</span></h2>
+          <h2 className="text-status-active text-3xl font-extrabold tracking-tight mt-1">
+            {summaryStats.satisfactionRate}% <span className="text-xs font-semibold text-status-active/70">ของลูกค้า</span>
+          </h2>
           <p className="text-[10px] text-status-active/80 font-bold mt-1.5 flex items-center gap-1">
             <span className="w-1.5 h-1.5 bg-status-active rounded-full"></span>
             สัดส่วนลูกค้าที่ตอบความเห็นพึงพอใจ

@@ -1,27 +1,22 @@
-import { Customer, Feedback, FollowUp } from '../../../types';
+import useCX from '../../../hooks/useCX';
 import CustomerDetailPage from '../pages/CustomerDetailPage';
 
-interface CustomerDetailModalProps {
-  selectedCustomerId: string;
-  customers: Customer[];
-  feedbacks: Feedback[];
-  followUps: FollowUp[];
-  onClose: () => void;
-  onAddFollowUp: () => void;
-}
+export default function CustomerDetailModal() {
+  const { setIsDetailModalOpen, setCurrentPage } = useCX();
 
-export default function CustomerDetailModal({
-  selectedCustomerId,
-  customers,
-  feedbacks,
-  followUps,
-  onClose,
-  onAddFollowUp,
-}: CustomerDetailModalProps) {
+  const handleClose = () => {
+    setIsDetailModalOpen(false);
+  };
+
+  const handleAddFollowUp = () => {
+    setIsDetailModalOpen(false);
+    setCurrentPage('add-followup');
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300">
       {/* Backdrop click close */}
-      <div className="absolute inset-0 cursor-zoom-out" onClick={onClose}></div>
+      <div className="absolute inset-0 cursor-zoom-out" onClick={handleClose}></div>
 
       {/* Modal Container */}
       <div className="relative bg-slate-50 w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden border border-white/20 flex flex-col max-h-[90vh] z-10 animate-fade-in-up">
@@ -37,7 +32,7 @@ export default function CustomerDetailModal({
             </span>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-all flex items-center justify-center"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -49,12 +44,8 @@ export default function CustomerDetailModal({
         {/* Scrollable details canvas */}
         <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-50">
           <CustomerDetailPage
-            customerId={selectedCustomerId}
-            customers={customers}
-            feedbacks={feedbacks}
-            followUps={followUps}
-            onBack={onClose}
-            onAddFollowUp={onAddFollowUp}
+            onBack={handleClose}
+            onAddFollowUp={handleAddFollowUp}
           />
         </div>
       </div>

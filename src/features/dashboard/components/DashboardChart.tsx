@@ -1,38 +1,170 @@
-import { useState } from 'react';
-import { Customer, Feedback } from '../../../types';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import useCX from '../../../hooks/useCX';
 
-interface DashboardChartProps {
-  customers: Customer[];
-  feedbacks: Feedback[];
-}
-
-export default function DashboardChart({ customers, feedbacks }: DashboardChartProps) {
+export default function DashboardChart() {
+  const { filteredCustomers, filteredFeedbacks } = useCX();
   const [activeTab, setActiveTab] = useState<'branch' | 'sentiment' | 'weekly'>('branch');
+  const [animate, setAnimate] = useState(false);
+  const [pieProgress, setPieProgress] = useState(0);
+  const rafRef = useRef<number>(0);
 
-  const branches = ['ลาดพร้าว', 'เชียงใหม่ นิมาน', 'ขอนแก่น มข.', 'หาดใหญ่ เซ็นทรัล', 'ชลบุรี อมตะ'];
-  const branchCounts = branches.map(br => ({
-    name: br,
-    count: customers.filter(c => c.branch === br).length
-  }));
-  const maxCount = Math.max(...branchCounts.map(b => b.count), 1);
+  // Trigger animation resets whenever the active tab changes
+  useEffect(() => {
+    setAnimate(false);
+    setPieProgress(0);
 
-  const totalFeedbacks = feedbacks.length || 1;
-  const positiveCount = feedbacks.filter(fb => fb.sentiment === 'positive').length;
-  const neutralCount = feedbacks.filter(fb => fb.sentiment === 'neutral').length;
-  const negativeCount = feedbacks.filter(fb => fb.sentiment === 'negative').length;
-  
-  const sentimentPct = {
-    positive: Math.round((positiveCount / totalFeedbacks) * 100),
-    neutral: Math.round((neutralCount / totalFeedbacks) * 100),
-    negative: Math.round((negativeCount / totalFeedbacks) * 100)
-  };
+    // Cancel any in-flight rAF from a previous tab
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
-  const weeklyTrends = [
-    { week: 'สัปดาห์ 1', score: 4.0 },
-    { week: 'สัปดาห์ 2', score: 4.2 },
-    { week: 'สัปดาห์ 3', score: 3.8 },
-    { week: 'สัปดาห์ 4', score: 4.5 }
-  ];
+    const timer = setTimeout(() => {
+      setAnimate(true);
+
+      // Start rAF-driven pie animation
+      if (activeTab === 'sentiment') {
+        const duration = 1400; // 1.4 seconds (Perfect sweet spot)
+        const startTime = performance.now();
+
+        const tick = (now: number) => {
+          const elapsed = now - startTime;
+          const linear = Math.min(elapsed / duration, 1);
+          // Ease-in-out curve
+          const eased = linear < 0.5
+            ? 2 * linear * linear
+            : 1 - Math.pow(-2 * linear + 2, 2) / 2;
+          setPieProgress(eased);
+          if (linear < 1) {
+            rafRef.current = requestAnimationFrame(tick);
+          }
+        };
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    }, 120);
+
+    return () => {
+      clearTimeout(timer);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [activeTab]);
+
+  // --- Dynamic Branch Data ---
+  const branchCounts = useMemo(() => {
+    const branches = ['ลาดพร้าว', 'เชียงใหม่ นิมาน', 'ขอนแก่น มข.', 'หาดใหญ่ เซ็นทรัล', 'ชลบุรี อมตะ'];
+    return branches.map(br => ({
+      name: br,
+      count: filteredCustomers.filter(c => c.branch === br).length
+    }));
+  }, [filteredCustomers]);
+
+  const maxCount = useMemo(() => {
+    const counts = branchCounts.map(b => b.count);
+    return Math.max(...counts, 1);
+  }, [branchCounts]);
+
+  // --- Dynamic Sentiment Data ---
+  const sentimentStats = useMemo(() => {
+    const total = filteredFeedbacks.length || 1;
+    const positive = filteredFeedbacks.filter(fb => fb.sentiment === 'positive').length;
+    const neutral = filteredFeedbacks.filter(fb => fb.sentiment === 'neutral').length;
+    const negative = filteredFeedbacks.filter(fb => fb.sentiment === 'negative').length;
+    
+    return {
+      total,
+      positive,
+      neutral,
+      negative,
+      pct: {
+        positive: Math.round((positive / total) * 100),
+        neutral: Math.round((neutral / total) * 100),
+        negative: Math.round((negative / total) * 100)
+      }
+    };
+  }, [filteredFeedbacks]);
+
+  // --- Dynamic Weekly CSAT Rating Score Trend ---
+  const weeklyTrends = useMemo(() => {
+    if (filteredFeedbacks.length === 0) {
+      return [
+        { week: 'สัปดาห์ 1', score: 4.0 },
+        { week: 'สัปดาห์ 2', score: 4.0 },
+        { week: 'สัปดาห์ 3', score: 4.0 },
+        { week: 'สัปดาห์ 4', score: 4.0 }
+      ];
+    }
+
+    // Sort feedbacks chronologically
+    const sorted = [...filteredFeedbacks].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+    const minTime = new Date(sorted[0].created_at).getTime();
+    const maxTimeOriginal = new Date(sorted[sorted.length - 1].created_at).getTime();
+    // Pad interval if min/max are identical (single feedback or same instant)
+    const maxTime = minTime === maxTimeOriginal 
+      ? minTime + 1000 * 60 * 60 * 24 * 28 // 4 weeks
+      : maxTimeOriginal;
+
+    const totalDuration = maxTime - minTime;
+    const interval = totalDuration / 4;
+
+    const trends = [];
+    let lastAvg = 4.0; // Seed value fallback
+
+    for (let i = 0; i < 4; i++) {
+      const start = minTime + i * interval;
+      const end = start + interval;
+
+      const periodFeedbacks = sorted.filter(fb => {
+        const t = new Date(fb.created_at).getTime();
+        return t >= start && t < end;
+      });
+
+      let avg = lastAvg;
+      if (periodFeedbacks.length > 0) {
+        avg = periodFeedbacks.reduce((acc, f) => acc + f.rating, 0) / periodFeedbacks.length;
+        lastAvg = avg; // Cache last valid score
+      }
+      
+      trends.push({
+        week: `สัปดาห์ ${i + 1}`,
+        score: parseFloat(avg.toFixed(1))
+      });
+    }
+
+    return trends;
+  }, [filteredFeedbacks]);
+
+  // Generate SVG coordinates dynamically for the Line Chart (viewBox="0 0 400 120")
+  // X values: index 0 -> 50, 1 -> 150, 2 -> 250, 3 -> 350
+  // Y values: Score 5.0 -> Y:20, Score 1.0 -> Y:100
+  const lineCoords = useMemo(() => {
+    const xCoords = [50, 150, 250, 350];
+    return weeklyTrends.map((t, idx) => {
+      const x = xCoords[idx];
+      // Formula: map score [1, 5] to Y [100, 20]
+      const score = Math.max(1, Math.min(5, t.score));
+      const y = 100 - ((score - 1) / 4) * 80;
+      return { x, y, score: t.score };
+    });
+  }, [weeklyTrends]);
+
+  // Cubic Bezier curve paths computed dynamically
+  const svgPaths = useMemo(() => {
+    if (lineCoords.length < 4) return { line: '', fill: '' };
+    const p0 = lineCoords[0];
+    const p1 = lineCoords[1];
+    const p2 = lineCoords[2];
+    const p3 = lineCoords[3];
+
+    // Smooth control offsets
+    const strokePath = `M ${p0.x} ${p0.y} ` +
+      `C ${(p0.x + p1.x) / 2} ${p0.y}, ${(p0.x + p1.x) / 2} ${p1.y}, ${p1.x} ${p1.y} ` +
+      `C ${(p1.x + p2.x) / 2} ${p1.y}, ${(p1.x + p2.x) / 2} ${p2.y}, ${p2.x} ${p2.y} ` +
+      `C ${(p2.x + p3.x) / 2} ${p2.y}, ${(p2.x + p3.x) / 2} ${p3.y}, ${p3.x} ${p3.y}`;
+
+    const fillPath = `${strokePath} L ${p3.x} 120 L ${p0.x} 120 Z`;
+
+    return { line: strokePath, fill: fillPath };
+  }, [lineCoords]);
 
   return (
     <div className="bg-white p-6 rounded-3xl border border-white/60 shadow-[6px_6px_15px_rgba(163,177,198,0.35),-6px_-6px_15px_rgba(255,255,255,0.8)] mb-6 font-body text-slate-800">
@@ -96,14 +228,14 @@ export default function DashboardChart({ customers, feedbacks }: DashboardChartP
 
             <div className="flex items-end justify-between h-40 relative z-10 w-full px-8">
               {branchCounts.map((b, i) => {
-                const heightPct = (b.count / maxCount) * 100;
+                const heightPct = animate ? (b.count / maxCount) * 100 : 0;
                 return (
-                  <div key={i} className="flex flex-col items-center group w-1/5 max-w-[90px]">
-                    <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 bg-gray-950 text-white text-[10px] py-1 px-2.5 rounded transition-opacity duration-200 pointer-events-none shadow z-20">
+                  <div key={i} className="flex flex-col items-center h-full group w-1/5 max-w-[90px] justify-end">
+                    <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 bg-gray-950 text-white text-[10px] py-1 px-2.5 rounded transition-opacity duration-200 pointer-events-none shadow z-20 whitespace-nowrap">
                       สาขา {b.name}: {b.count} ราย
                     </div>
                     <div 
-                      className="w-full bg-primary rounded-t transition-all duration-700 ease-out hover:bg-primary-dark shadow-sm"
+                      className="w-full bg-primary rounded-t transition-all duration-[1300ms] cubic-bezier(0.16,1,0.3,1) hover:bg-primary-dark shadow-sm"
                       style={{ height: `${Math.max(heightPct, 8)}%` }}
                     ></div>
                     <span className="text-[10px] text-gray-500 font-semibold mt-2 text-center truncate w-full">
@@ -122,25 +254,28 @@ export default function DashboardChart({ customers, feedbacks }: DashboardChartP
             <div className="relative w-36 h-36">
               <svg className="w-full h-full" viewBox="0 0 36 36">
                 <circle cx="18" cy="18" r="15.915" fill="none" stroke="#f3f4f6" strokeWidth="4.2" />
+                {/* Positive */}
                 <circle 
-                  cx="18" cy="18" r="15.915" fill="none" stroke="#057A55" strokeWidth="4.2" 
-                  strokeDasharray={`${sentimentPct.positive} ${100 - sentimentPct.positive}`} 
+                  cx="18" cy="18" r="15.915" fill="none" stroke="#057A55" strokeWidth="4.2"
+                  strokeDasharray={`${sentimentStats.pct.positive * pieProgress} ${100 - sentimentStats.pct.positive * pieProgress}`}
                   strokeDashoffset="25"
                 />
+                {/* Neutral */}
                 <circle 
-                  cx="18" cy="18" r="15.915" fill="none" stroke="#92400E" strokeWidth="4.2" 
-                  strokeDasharray={`${sentimentPct.neutral} ${100 - sentimentPct.neutral}`} 
-                  strokeDashoffset={`${25 - sentimentPct.positive}`}
+                  cx="18" cy="18" r="15.915" fill="none" stroke="#92400E" strokeWidth="4.2"
+                  strokeDasharray={`${sentimentStats.pct.neutral * pieProgress} ${100 - sentimentStats.pct.neutral * pieProgress}`}
+                  strokeDashoffset={25 - sentimentStats.pct.positive * pieProgress}
                 />
+                {/* Negative */}
                 <circle 
-                  cx="18" cy="18" r="15.915" fill="none" stroke="#C81E1E" strokeWidth="4.2" 
-                  strokeDasharray={`${sentimentPct.negative} ${100 - sentimentPct.negative}`} 
-                  strokeDashoffset={`${25 - sentimentPct.positive - sentimentPct.neutral}`}
+                  cx="18" cy="18" r="15.915" fill="none" stroke="#C81E1E" strokeWidth="4.2"
+                  strokeDasharray={`${sentimentStats.pct.negative * pieProgress} ${100 - sentimentStats.pct.negative * pieProgress}`}
+                  strokeDashoffset={25 - sentimentStats.pct.positive * pieProgress - sentimentStats.pct.neutral * pieProgress}
                 />
               </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-700 ${pieProgress > 0.3 ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}`}>
                 <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">เชิงบวก</span>
-                <span className="text-md font-black text-gray-900">{sentimentPct.positive}%</span>
+                <span className="text-md font-black text-gray-900">{Math.round(sentimentStats.pct.positive * pieProgress)}%</span>
               </div>
             </div>
 
@@ -149,21 +284,21 @@ export default function DashboardChart({ customers, feedbacks }: DashboardChartP
                 <span className="w-2.5 h-2.5 rounded-full bg-sentiment-positive"></span>
                 <div>
                   <p className="text-[11px] font-bold text-gray-800">พอใจ (Positive)</p>
-                  <p className="text-[10px] text-gray-500 font-medium">{positiveCount} รายการ ({sentimentPct.positive}%)</p>
+                  <p className="text-[10px] text-gray-500 font-medium">{sentimentStats.positive} รายการ ({sentimentStats.pct.positive}%)</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-sentiment-neutral"></span>
                 <div>
                   <p className="text-[11px] font-bold text-gray-800">เฉยๆ (Neutral)</p>
-                  <p className="text-[10px] text-gray-500 font-medium">{neutralCount} รายการ ({sentimentPct.neutral}%)</p>
+                  <p className="text-[10px] text-gray-500 font-medium">{sentimentStats.neutral} รายการ ({sentimentStats.pct.neutral}%)</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-sentiment-negative"></span>
                 <div>
                   <p className="text-[11px] font-bold text-gray-800">ไม่พอใจ (Negative)</p>
-                  <p className="text-[10px] text-gray-500 font-medium">{negativeCount} รายการ ({sentimentPct.negative}%)</p>
+                  <p className="text-[10px] text-gray-500 font-medium">{sentimentStats.negative} รายการ ({sentimentStats.pct.negative}%)</p>
                 </div>
               </div>
             </div>
@@ -172,7 +307,7 @@ export default function DashboardChart({ customers, feedbacks }: DashboardChartP
 
         {/* 📈 LINE CHART: Weekly CSAT Score Trend */}
         {activeTab === 'weekly' && (
-          <div className="w-full h-full flex flex-col justify-end px-4">
+          <div className="w-full h-full flex flex-col justify-end px-4 animate-fade-in-up">
             <div className="w-full h-36 relative">
               <svg className="w-full h-full" viewBox="0 0 400 120" preserveAspectRatio="none">
                 <defs>
@@ -181,30 +316,61 @@ export default function DashboardChart({ customers, feedbacks }: DashboardChartP
                     <stop offset="100%" stopColor="#0051BA" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
-                <path 
-                  d="M 50 80 Q 150 60 250 90 T 350 40" 
-                  fill="none" 
-                  stroke="#0051BA" 
-                  strokeWidth="3" 
-                  strokeLinecap="round"
-                />
-                <path 
-                  d="M 50 80 Q 150 60 250 90 T 350 40 L 350 120 L 50 120 Z" 
-                  fill="url(#chartGrad)" 
-                />
-                <circle cx="50" cy="80" r="4" fill="#0051BA" stroke="white" strokeWidth="1" />
-                <circle cx="150" cy="65" r="4" fill="#0051BA" stroke="white" strokeWidth="1" />
-                <circle cx="250" cy="83" r="4" fill="#0051BA" stroke="white" strokeWidth="1" />
-                <circle cx="350" cy="40" r="5" fill="#0051BA" stroke="white" strokeWidth="1" />
+                {/* Dynamic fill gradient path */}
+                {animate && svgPaths.fill && (
+                  <path 
+                    d={svgPaths.fill} 
+                    fill="url(#chartGrad)" 
+                    className="animate-fill-fade"
+                  />
+                )}
+                {/* Dynamic draw stroke path */}
+                {svgPaths.line && (
+                  <path 
+                    d={svgPaths.line} 
+                    fill="none" 
+                    stroke="#0051BA" 
+                    strokeWidth="3" 
+                    strokeLinecap="round"
+                    className={animate ? 'animate-line-draw' : 'opacity-0'}
+                  />
+                )}
+                
+                {/* Points growing inside circles */}
+                {animate && lineCoords.map((pt, idx) => (
+                  <circle 
+                    key={idx}
+                    cx={pt.x} 
+                    cy={pt.y} 
+                    r={idx === 3 ? 5 : 4} 
+                    fill="#0051BA" 
+                    stroke="white" 
+                    strokeWidth="1.5" 
+                    className={`transition-all duration-300 transform scale-100 ease-out`}
+                    style={{ transitionDelay: `${idx * 150}ms` }}
+                  />
+                ))}
               </svg>
 
-              <div className="absolute left-[3%] top-[55%] -translate-y-1/2 bg-slate-900 text-white text-[9px] px-1 py-0.5 rounded font-bold">สัปดาห์ 1: 4.0 ★</div>
-              <div className="absolute left-[30%] top-[45%] -translate-y-1/2 bg-slate-900 text-white text-[9px] px-1 py-0.5 rounded font-bold">สัปดาห์ 2: 4.2 ★</div>
-              <div className="absolute left-[58%] top-[60%] -translate-y-1/2 bg-slate-900 text-white text-[9px] px-1 py-0.5 rounded font-bold">สัปดาห์ 3: 3.8 ★</div>
-              <div className="absolute left-[85%] top-[25%] -translate-y-1/2 bg-slate-900 text-white text-[9px] px-1 py-0.5 rounded font-bold">สัปดาห์ 4: 4.5 ★</div>
+              {/* Dynamic weekly data popups */}
+              {lineCoords.map((pt, idx) => (
+                <div 
+                  key={idx}
+                  className={`absolute -translate-y-1/2 bg-slate-900 text-white text-[9px] px-1 py-0.5 rounded font-bold transition-all duration-500 ${
+                    animate ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
+                  }`}
+                  style={{
+                    left: `${(pt.x / 400) * 100 - 9}%`,
+                    top: `${(pt.y / 120) * 100}%`,
+                    transitionDelay: `${idx * 100}ms`
+                  }}
+                >
+                  สัปดาห์ {idx + 1}: {pt.score.toFixed(1)} ★
+                </div>
+              ))}
             </div>
 
-            <div className="flex justify-between items-center px-4 mt-2 border-t border-gray-100 pt-2">
+            <div className={`flex justify-between items-center px-4 mt-2 border-t border-gray-100 pt-2 transition-opacity duration-700 ${animate ? 'opacity-100' : 'opacity-0'}`}>
               {weeklyTrends.map((t, idx) => (
                 <span key={idx} className="text-[10px] text-gray-500 font-bold">
                   {t.week} (คะแนน: {t.score.toFixed(1)})

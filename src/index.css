@@ -26,10 +26,12 @@
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
   }
+
   70% {
     transform: scale(1);
     box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
   }
+
   100% {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
@@ -38,15 +40,19 @@
 
 /* Premium custom overdue dashboard card glow */
 @keyframes glow-red {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03), 0 0 0 0 rgba(200, 30, 30, 0.15);
     border-color: rgba(239, 68, 68, 0.3);
   }
+
   50% {
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04), 0 0 16px 6px rgba(200, 30, 30, 0.25);
     border-color: rgba(200, 30, 30, 0.65);
   }
 }
+
 .pulse-overdue-glow {
   animation: glow-red 3s infinite ease-in-out;
 }
@@ -76,6 +82,7 @@
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -88,12 +95,29 @@
 }
 
 /* Staggered Delay classes */
-.delay-75 { animation-delay: 75ms; }
-.delay-100 { animation-delay: 100ms; }
-.delay-150 { animation-delay: 150ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-300 { animation-delay: 300ms; }
-.delay-500 { animation-delay: 500ms; }
+.delay-75 {
+  animation-delay: 75ms;
+}
+
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-150 {
+  animation-delay: 150ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+.delay-500 {
+  animation-delay: 500ms;
+}
 
 /* 🌟 Premium White Hover Shimmer Sweep Effect */
 .hover-shimmer {
@@ -108,12 +132,10 @@
   left: -150%;
   width: 50%;
   height: 100%;
-  background: linear-gradient(
-    to right,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.25) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  background: linear-gradient(to right,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.25) 50%,
+      rgba(255, 255, 255, 0) 100%);
   transform: skewX(-25deg);
   transition: 0.85s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
@@ -129,11 +151,15 @@
 }
 
 /* 🌟 Satisfying interactive focus lift-and-glow micro-interactions */
-input, select, textarea {
+input,
+select,
+textarea {
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(0, 81, 186, 0.12), 0 0 0 3px rgba(0, 81, 186, 0.15) !important;
 }
@@ -145,7 +171,6 @@ input:focus, select:focus, textarea:focus {
 
 .soft-extruded {
   background: #F0F2F5 !important;
-  box-shadow: 6px 6px 12px #d5d7db, -6px -6px 12px #ffffff !important;
   border: 1px solid rgba(255, 255, 255, 0.7) !important;
   border-radius: 24px;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
@@ -178,4 +203,42 @@ input:focus, select:focus, textarea:focus {
 .soft-button:active {
   transform: translateY(0) !important;
   box-shadow: inset 2px 2px 4px #cacad0, inset -2px -2px 4px #ffffff !important;
+}
+
+/* 📊 Premium SVG and HTML Chart Animations */
+
+/* 1. Pie Chart Sectors transition (Gradual & Calm) */
+.animate-pie-sector {
+  transition: stroke-dasharray 2.8s cubic-bezier(0.4, 0, 0.2, 1), stroke-dashoffset 2.8s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 2. Line Chart path drawing transition (Tracing speed) */
+@keyframes drawLine {
+  from {
+    stroke-dashoffset: 400;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-line-draw {
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: drawLine 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 3. Line Chart gradient fill fade-in (Delayed fade) */
+@keyframes fadeInFill {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fill-fade {
+  opacity: 0;
+  animation: fadeInFill 1.8s ease-out 0.6s forwards;
 }

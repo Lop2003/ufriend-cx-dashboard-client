@@ -1,38 +1,27 @@
-import { ReactNode } from 'react';
-import { Customer } from '../../types';
+import { ReactNode, useState } from 'react';
+import useCX from '../../hooks/useCX';
 import Sidebar from '../Sidebar';
-// @ts-ignore
 import azulBg from '../../../coolbackgrounds-fractalize-azul.png';
 
 interface MainLayoutProps {
   children: ReactNode;
-  currentPage: 'dashboard' | 'customer-detail' | 'add-feedback' | 'add-followup';
-  onPageChange: (page: 'dashboard' | 'customer-detail' | 'add-feedback' | 'add-followup') => void;
-  customers: Customer[];
-  selectedCustomerId: string | null;
-  onSelectCustomerId: (id: string) => void;
-  searchQuery: string;
-  onSearchChange: (value: string) => void;
-  selectedBranch: string;
-  onBranchChange: (value: string) => void;
-  selectedStatus: string;
-  onStatusChange: (value: string) => void;
 }
 
-export default function MainLayout({
-  children,
-  currentPage,
-  onPageChange,
-  customers,
-  selectedCustomerId,
-  onSelectCustomerId,
-  searchQuery,
-  onSearchChange,
-  selectedBranch,
-  onBranchChange,
-  selectedStatus,
-  onStatusChange,
-}: MainLayoutProps) {
+export default function MainLayout({ children }: MainLayoutProps) {
+  const {
+    currentPage,
+    customers,
+    searchQuery,
+    setSearchQuery,
+    selectedBranch,
+    setSelectedBranch,
+    selectedStatus,
+    setSelectedStatus,
+  } = useCX();
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // Dynamic list of branches
   const uniqueBranches = Array.from(new Set(customers.map((c) => c.branch)));
 
   return (
@@ -40,13 +29,10 @@ export default function MainLayout({
       className="flex h-screen overflow-hidden font-body text-slate-800 antialiased p-6 gap-6 bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: `url(${azulBg})` }}
     >
-      {/* 🚀 Floating uFriend Sidebar */}
+      {/* 🚀 Floating uFriend Sidebar with self-contained Toggle Collapse */}
       <Sidebar
-        currentPage={currentPage}
-        onPageChange={onPageChange}
-        customers={customers}
-        selectedCustomerId={selectedCustomerId}
-        onSelectCustomerId={onSelectCustomerId}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
 
       {/* 🖥️ Main Display Canvas */}
@@ -54,7 +40,7 @@ export default function MainLayout({
         {/* 🔮 Soft UI Extruded Main Panel */}
         <div className="flex-1 flex flex-col soft-extruded overflow-hidden relative">
           
-          {/* Navigation Status Bar (Modern Top Header with Integrated Filters matching Reference Image) */}
+          {/* Navigation Status Bar (Modern Top Header with Integrated Filters) */}
           <header className="h-16 bg-white border-b border-slate-100 px-8 flex items-center justify-between shrink-0 rounded-t-[24px]">
             <div className="flex items-center gap-2 mr-4">
               <span className="text-[9px] bg-primary-light text-primary font-bold px-2 py-0.5 rounded uppercase tracking-wider">
@@ -64,6 +50,7 @@ export default function MainLayout({
                 <>
                   <span className="text-slate-300">/</span>
                   <span className="text-xs font-bold text-slate-500 font-display uppercase tracking-wide">
+                    {currentPage === 'customers' && 'รายชื่อลูกค้า'}
                     {currentPage === 'customer-detail' && 'ข้อมูลลูกค้า'}
                     {currentPage === 'add-feedback' && 'บันทึกคำติชม'}
                     {currentPage === 'add-followup' && 'บันทึกการติดตาม'}
@@ -72,10 +59,10 @@ export default function MainLayout({
               )}
             </div>
 
-            {/* Integrated Top Filter Deck matching Reference Image */}
+            {/* Integrated Top Filter Deck */}
             {currentPage === 'dashboard' ? (
               <div className="flex items-center gap-3 flex-1 max-w-xl mx-4">
-                {/* Search Recessed Box */}
+                {/* Search Box */}
                 <div className="relative flex-1">
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 pointer-events-none z-10">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -85,7 +72,7 @@ export default function MainLayout({
                   <input
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => onSearchChange(e.target.value)}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-9 pr-4 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-all placeholder:text-gray-400 text-gray-800 soft-recessed border-0"
                     placeholder="ค้นหาชื่อลูกค้า, สินค้า..."
                   />
@@ -94,7 +81,7 @@ export default function MainLayout({
                 {/* Branch Dropdown */}
                 <select
                   value={selectedBranch}
-                  onChange={(e) => onBranchChange(e.target.value)}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
                   className="px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-all text-gray-700 soft-recessed border-0 max-w-[150px]"
                 >
                   <option value="">สาขา: ทั้งหมด</option>
@@ -106,7 +93,7 @@ export default function MainLayout({
                 {/* Status Dropdown */}
                 <select
                   value={selectedStatus}
-                  onChange={(e) => onStatusChange(e.target.value)}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
                   className="px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-all text-gray-700 soft-recessed border-0 max-w-[150px]"
                 >
                   <option value="">สถานะ: ทั้งหมด</option>
@@ -117,7 +104,7 @@ export default function MainLayout({
               </div>
             ) : null}
 
-            {/* User Profile avatar on the far right (Matches Reference Image) */}
+            {/* User Profile avatar on the far right */}
             <div className="flex items-center gap-3 shrink-0 ml-auto">
               <div className="text-right hidden md:block">
                 <p className="text-xs font-bold text-gray-900 leading-none">ผู้ตรวจสอบคนที่ 2</p>

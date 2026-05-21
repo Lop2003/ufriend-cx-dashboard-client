@@ -1,22 +1,14 @@
-import { useState } from 'react';
-import { Customer, Feedback } from '../../../types';
 import SummaryCards from '../components/SummaryCards';
 import DashboardChart from '../components/DashboardChart';
 import DashboardTable from '../components/DashboardTable';
 
-interface DashboardPageProps {
-  customers: Customer[];
-  feedbacks: Feedback[];
-  onSelectCustomer: (id: string) => void;
-}
-
-export default function DashboardPage({ customers, feedbacks, onSelectCustomer }: DashboardPageProps) {
+export default function DashboardPage() {
   return (
     <div className="font-body text-slate-800 antialiased">
-      {/* 🔮 Soft UI Split Layout Grid (Matching Reference Image) */}
+      {/* 🔮 Soft UI Split Layout Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         
-        {/* 🔵 Left Column: KPI & Metrics (Stacked Vertically, exactly like Reference Image) */}
+        {/* 🔵 Left Column: KPI & Metrics */}
         <div className="lg:col-span-1 flex flex-col gap-5">
           <div className="px-1 shrink-0">
             <h4 className="text-[10px] font-black text-gray-400 tracking-wider font-display uppercase flex items-center gap-1.5">
@@ -26,19 +18,10 @@ export default function DashboardPage({ customers, feedbacks, onSelectCustomer }
               ดัชนีชี้วัดหลัก (KPI & METRICS)
             </h4>
           </div>
-          <SummaryCards customers={customers} feedbacks={feedbacks} vertical={true} />
-          
-          {/* Recessed Helper Box */}
-          <div className="soft-recessed p-4 text-[10px] text-gray-500 font-bold leading-relaxed space-y-2 mt-1">
-            <p className="text-primary flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-primary rounded-full animate-ping"></span>
-              uFriend CX AI Live Status:
-            </p>
-            <p>ระบบวิเคราะห์ข้อมูลค้างชำระและการตอบกลับข้อติชมแบบเรียลไทม์เพื่อรักษาค่าดัชนีความพึงพอใจของลูกค้าให้อยู่ในระดับสูงสุด</p>
-          </div>
+          <SummaryCards vertical={true} />
         </div>
 
-        {/* 🖥️ Right Column: Charts & Tables (Stacked Vertically, exactly like Reference Image) */}
+        {/* 🖥️ Right Column: Charts & Tables */}
         <div className="lg:col-span-3 space-y-6">
           {/* Charts & Graphs Section */}
           <div>
@@ -47,7 +30,7 @@ export default function DashboardPage({ customers, feedbacks, onSelectCustomer }
                 การวิเคราะห์และแนวโน้มความพึงพอใจ (CHARTS & GRAPHS)
               </h4>
             </div>
-            <DashboardChart customers={customers} feedbacks={feedbacks} />
+            <DashboardChart />
           </div>
 
           {/* Tables Section */}
@@ -63,7 +46,7 @@ export default function DashboardPage({ customers, feedbacks, onSelectCustomer }
                 คลิกแถวสัญญาเพื่อเปิดบันทึกติดตามด่วน
               </span>
             </div>
-            <DashboardTable customers={customers} onSelectCustomer={onSelectCustomer} />
+            <DashboardTable />
           </div>
         </div>
         

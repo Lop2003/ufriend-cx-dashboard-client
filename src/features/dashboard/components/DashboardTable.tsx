@@ -1,9 +1,5 @@
+import useCX from '../../../hooks/useCX';
 import { Customer } from '../../../types';
-
-interface DashboardTableProps {
-  customers: Customer[];
-  onSelectCustomer: (id: string) => void;
-}
 
 const STATUS_MAP = {
   active: {
@@ -23,14 +19,16 @@ const STATUS_MAP = {
 const StatusBadge = ({ status }: { status: Customer['status'] }) => {
   const s = STATUS_MAP[status] ?? STATUS_MAP.completed;
   return (
-    <span className={`px-2.5 py-1 rounded-lg text-[10px] tracking-wide uppercase ${s.className}`}>
+    <span className={`px-2 py-0.5 rounded text-[9px] tracking-wide uppercase ${s.className}`}>
       {s.label}
     </span>
   );
 };
 
-export default function DashboardTable({ customers, onSelectCustomer }: DashboardTableProps) {
-  if (customers.length === 0) {
+export default function DashboardTable() {
+  const { filteredCustomers, navigateToCustomerDetail } = useCX();
+
+  if (filteredCustomers.length === 0) {
     return (
       <div className="text-gray-400 text-xs py-12 text-center bg-white border border-gray-200 rounded-xl flex flex-col items-center justify-center gap-3">
         <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -46,45 +44,44 @@ export default function DashboardTable({ customers, onSelectCustomer }: Dashboar
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100 text-left">
           {/* Table Header */}
-          <thead className="bg-slate-50/75 border-b border-gray-200 text-gray-400 text-[10px] font-black uppercase tracking-wider">
+          <thead className="bg-slate-50/75 border-b border-gray-200 text-gray-400 text-[11px] font-black uppercase tracking-wider">
             <tr>
-              <th scope="col" className="px-6 py-4 font-display">ชื่อลูกค้าตามสัญญา</th>
-              <th scope="col" className="px-6 py-4">เบอร์โทรศัพท์ติดต่อ</th>
-              <th scope="col" className="px-6 py-4">สินค้าสัญญาผ่อน</th>
-              <th scope="col" className="px-6 py-4">สาขาที่ดูแล</th>
-              <th scope="col" className="px-6 py-4">ระยะเวลา</th>
-              <th scope="col" className="px-6 py-4">สถานะบัญชี</th>
-              <th scope="col" className="px-6 py-4 text-right">การจัดการ</th>
+              <th scope="col" className="px-5 py-3 font-display">ชื่อลูกค้าตามสัญญา</th>
+              <th scope="col" className="px-5 py-3">เบอร์โทรศัพท์ติดต่อ</th>
+              <th scope="col" className="px-5 py-3">สินค้าสัญญาผ่อน</th>
+              <th scope="col" className="px-5 py-3">สาขาที่ดูแล</th>
+              <th scope="col" className="px-5 py-3">ระยะเวลา</th>
+              <th scope="col" className="px-5 py-3">สถานะบัญชี</th>
+              <th scope="col" className="px-5 py-3 text-right">การจัดการ</th>
             </tr>
           </thead>
 
           {/* Table Body */}
-          <tbody className="bg-white divide-y divide-gray-100 text-xs font-semibold text-gray-700">
-            {customers.map((c) => {
+          <tbody className="bg-white divide-y divide-gray-100 text-[11px] font-semibold text-gray-700">
+            {filteredCustomers.map((c) => {
               const isOverdue = c.status === 'overdue';
               return (
                 <tr
                   key={c.id}
-                  onClick={() => onSelectCustomer(c.id)}
-                  className={`group cursor-pointer transition-all duration-300 border-l-4 ${
-                    isOverdue
-                      ? 'border-l-status-overdue bg-red-50/10 hover:bg-red-50/30'
-                      : 'border-l-transparent hover:bg-slate-50/80 hover:text-primary-dark'
-                  }`}
+                  onClick={() => navigateToCustomerDetail(c.id)}
+                  className={`group cursor-pointer transition-all duration-300 border-l-4 ${isOverdue
+                    ? 'border-l-status-overdue bg-red-50/10 hover:bg-red-50/30'
+                    : 'border-l-transparent hover:bg-slate-50/80 hover:text-primary-dark'
+                    }`}
                 >
-                  <td className="px-6 py-4 font-bold text-gray-900 font-display text-sm">
+                  <td className="px-5 py-3 font-bold text-gray-900 font-display text-xs">
                     <div className="transform group-hover:translate-x-1.5 transition-transform duration-300 ease-out">
                       {c.name}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-gray-500 font-mono">{c.phone}</td>
-                  <td className="px-6 py-4 text-gray-800 font-bold">{c.product}</td>
-                  <td className="px-6 py-4 text-gray-600">{c.branch}</td>
-                  <td className="px-6 py-4 text-gray-500">{c.plan_months} เดือน</td>
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-3 text-gray-500 font-mono">{c.phone}</td>
+                  <td className="px-5 py-3 text-gray-800 font-bold">{c.product}</td>
+                  <td className="px-5 py-3 text-gray-600">{c.branch}</td>
+                  <td className="px-5 py-3 text-gray-500">{c.plan_months} เดือน</td>
+                  <td className="px-5 py-3">
                     <StatusBadge status={c.status} />
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-5 py-3 text-right">
                     <span className="text-primary hover:text-primary-dark inline-flex items-center gap-1 font-bold">
                       ดูประวัติ
                       <svg className="w-3.5 h-3.5 transform group-hover:translate-x-1.5 transition-transform duration-300 ease-out" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -98,8 +95,8 @@ export default function DashboardTable({ customers, onSelectCustomer }: Dashboar
           </tbody>
         </table>
       </div>
-      <div className="bg-slate-50/50 px-6 py-3 border-t border-gray-100 flex items-center justify-between text-[10px] text-gray-400 font-bold tracking-wide">
-        <span>แสดงข้อมูล {customers.length} รายการสัญญาทั้งหมด</span>
+      <div className="bg-slate-50/50 px-6 py-2.5 border-t border-gray-100 flex items-center justify-between text-[9px] text-gray-400 font-bold tracking-wide">
+        <span>แสดงข้อมูล {filteredCustomers.length} รายการสัญญาทั้งหมด</span>
         <span>uFriend Customer Experience System v1.1</span>
       </div>
     </div>
