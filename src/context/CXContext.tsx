@@ -54,7 +54,7 @@ export function CXProvider({ children }: CXProviderProps) {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
 
   // Data State
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [customers] = useState<Customer[]>(initialCustomers);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>(initialFeedbacks);
   const [followUps, setFollowUps] = useState<FollowUp[]>(initialFollowUps);
 

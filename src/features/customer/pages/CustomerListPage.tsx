@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import useCX from '../../../hooks/useCX';
-import { Customer } from '../../../types';
+
 
 const STATUS_MAP = {
   active: {
@@ -46,25 +46,45 @@ export default function CustomerListPage() {
   return (
     <div className="space-y-6 font-body text-slate-800 antialiased animate-fade-in-up">
       {/* 🔮 Quick Customer Stats Deck (Soft UI) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between h-20">
-          <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">ลูกค้าทั้งหมด</span>
-          <span className="text-xl font-black text-primary-dark">{total} ราย</span>
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div 
+          onClick={() => setStatusFilter('')}
+          className={`bg-white p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col justify-between min-h-[5rem] h-auto cursor-pointer active:scale-95 hover:shadow-md transition-all duration-300 ${
+            statusFilter === '' ? 'ring-2 ring-primary border-transparent scale-[1.01] bg-blue-50/20' : 'border-gray-100'
+          }`}
+        >
+          <span className="text-[9px] xs:text-[10px] lg:text-[9px] xl:text-[10px] text-gray-400 font-extrabold uppercase tracking-wider whitespace-nowrap">ลูกค้าทั้งหมด</span>
+          <span className="text-lg xs:text-xl lg:text-lg xl:text-xl font-black text-primary-dark mt-1">{total} ราย</span>
         </div>
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between h-20">
-          <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider text-status-active">ผ่อนชำระปกติ</span>
-          <span className="text-xl font-black text-status-active">{active} ราย</span>
+        <div 
+          onClick={() => setStatusFilter('active')}
+          className={`bg-white p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col justify-between min-h-[5rem] h-auto cursor-pointer active:scale-95 hover:shadow-md transition-all duration-300 ${
+            statusFilter === 'active' ? 'ring-2 ring-emerald-500 border-transparent scale-[1.01] bg-emerald-50/20' : 'border-gray-100'
+          }`}
+        >
+          <span className="text-[9px] xs:text-[10px] lg:text-[9px] xl:text-[10px] text-gray-400 font-extrabold uppercase tracking-wider text-status-active whitespace-nowrap">ผ่อนชำระปกติ</span>
+          <span className="text-lg xs:text-xl lg:text-lg xl:text-xl font-black text-status-active mt-1">{active} ราย</span>
         </div>
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between h-20 relative overflow-hidden group">
-          <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider text-status-overdue flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-status-overdue rounded-full pulse-red-glow"></span>
+        <div 
+          onClick={() => setStatusFilter('overdue')}
+          className={`bg-white p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col justify-between min-h-[5rem] h-auto relative overflow-hidden group cursor-pointer active:scale-95 hover:shadow-md transition-all duration-300 ${
+            statusFilter === 'overdue' ? 'ring-2 ring-red-500 border-transparent scale-[1.01] bg-red-50/20' : 'border-gray-100'
+          }`}
+        >
+          <span className="text-[9px] xs:text-[10px] lg:text-[9px] xl:text-[10px] text-gray-400 font-extrabold uppercase tracking-wider text-status-overdue flex items-center gap-1 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 bg-status-overdue rounded-full pulse-red-glow shrink-0"></span>
             ค้างชำระค่างวด
           </span>
-          <span className="text-xl font-black text-status-overdue">{overdue} ราย</span>
+          <span className="text-lg xs:text-xl lg:text-lg xl:text-xl font-black text-status-overdue mt-1">{overdue} ราย</span>
         </div>
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between h-20">
-          <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider text-status-completed">จบสัญญาแล้ว</span>
-          <span className="text-xl font-black text-status-completed">{completed} ราย</span>
+        <div 
+          onClick={() => setStatusFilter('completed')}
+          className={`bg-white p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col justify-between min-h-[5rem] h-auto cursor-pointer active:scale-95 hover:shadow-md transition-all duration-300 ${
+            statusFilter === 'completed' ? 'ring-2 ring-slate-400 border-transparent scale-[1.01] bg-slate-50' : 'border-gray-100'
+          }`}
+        >
+          <span className="text-[9px] xs:text-[10px] lg:text-[9px] xl:text-[10px] text-gray-400 font-extrabold uppercase tracking-wider text-status-completed whitespace-nowrap">จบสัญญาแล้ว</span>
+          <span className="text-lg xs:text-xl lg:text-lg xl:text-xl font-black text-status-completed mt-1">{completed} ราย</span>
         </div>
       </div>
 
@@ -114,22 +134,22 @@ export default function CustomerListPage() {
       <div className="bg-white rounded-3xl border border-white/60 shadow-[6px_6px_15px_rgba(163,177,198,0.35),-6px_-6px_15px_rgba(255,255,255,0.8)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-100 text-left">
-            <thead className="bg-slate-50/75 border-b border-gray-200 text-gray-400 text-[11px] font-black uppercase tracking-wider">
+            <thead className="bg-slate-50/75 border-b border-gray-200 text-gray-400 text-[10px] sm:text-[11px] font-black uppercase tracking-wider">
               <tr>
-                <th scope="col" className="px-5 py-3.5 font-display">รหัสสัญญา</th>
-                <th scope="col" className="px-5 py-3.5 font-display">ชื่อลูกค้าตามสัญญา</th>
-                <th scope="col" className="px-5 py-3.5">เบอร์โทรศัพท์ติดต่อ</th>
-                <th scope="col" className="px-5 py-3.5">สินค้าสัญญาผ่อน</th>
-                <th scope="col" className="px-5 py-3.5">สาขาที่ดูแล</th>
-                <th scope="col" className="px-5 py-3.5">ระยะเวลา</th>
-                <th scope="col" className="px-5 py-3.5">สถานะบัญชี</th>
-                <th scope="col" className="px-5 py-3.5 text-right">การจัดการ</th>
+                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 font-display whitespace-nowrap">รหัสสัญญา</th>
+                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 font-display whitespace-nowrap">ชื่อลูกค้าตามสัญญา</th>
+                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap">เบอร์โทรศัพท์ติดต่อ</th>
+                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap">สินค้าสัญญาผ่อน</th>
+                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap">สาขาที่ดูแล</th>
+                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap">ระยะเวลา</th>
+                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap">สถานะบัญชี</th>
+                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 text-right whitespace-nowrap">การจัดการ</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-100 text-[11px] font-semibold text-gray-700">
+            <tbody className="bg-white divide-y divide-gray-100 text-[10px] sm:text-[11px] font-semibold text-gray-700">
               {filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-10 text-center text-gray-400">
+                  <td colSpan={8} className="px-3 sm:px-4 md:px-5 py-10 text-center text-gray-400">
                     ไม่พบรายชื่อบัญชีลูกค้าตามคำค้นหาและเงื่อนไขตัวกรอง
                   </td>
                 </tr>
@@ -141,28 +161,30 @@ export default function CustomerListPage() {
                     <tr
                       key={c.id}
                       onClick={() => navigateToCustomerDetail(c.id)}
-                      className={`group cursor-pointer transition-all duration-300 border-l-4 ${
+                      className={`group cursor-pointer transition-all duration-300 ${
                         isOverdue
-                          ? 'border-l-status-overdue bg-red-50/10 hover:bg-red-50/30'
-                          : 'border-l-transparent hover:bg-slate-50/80 hover:text-primary-dark'
+                           ? 'bg-[#FFF0F2] hover:bg-[#FFE3E7]'
+                           : 'hover:bg-slate-50/80 hover:text-primary-dark'
                       }`}
                     >
-                      <td className="px-5 py-3.5 text-gray-400 font-mono">uF-{c.id.padEnd(6, '0')}</td>
-                      <td className="px-5 py-3.5 font-bold text-gray-900 font-display text-xs">
+                      <td className={`px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 text-gray-400 font-mono whitespace-nowrap border-l-4 ${
+                        isOverdue ? 'border-l-status-overdue' : 'border-l-transparent'
+                      }`}>uF-{c.id.padEnd(6, '0')}</td>
+                      <td className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 font-bold text-gray-900 font-display text-[11px] sm:text-xs whitespace-nowrap">
                         <div className="transform group-hover:translate-x-1.5 transition-transform duration-300 ease-out">
                           {c.name}
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-gray-500 font-mono">{c.phone}</td>
-                      <td className="px-5 py-3.5 text-gray-800 font-bold">{c.product}</td>
-                      <td className="px-5 py-3.5 text-gray-600">{c.branch}</td>
-                      <td className="px-5 py-3.5 text-gray-500">{c.plan_months} เดือน</td>
-                      <td className="px-5 py-3.5">
-                        <span className={`px-2 py-0.5 rounded text-[9px] tracking-wide uppercase ${s.className}`}>
+                      <td className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 text-gray-500 font-mono whitespace-nowrap">{c.phone}</td>
+                      <td className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 text-gray-800 font-bold whitespace-nowrap">{c.product}</td>
+                      <td className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 text-gray-600 whitespace-nowrap">{c.branch}</td>
+                      <td className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 text-gray-500 whitespace-nowrap">{c.plan_months} เดือน</td>
+                      <td className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap">
+                        <span className={`px-2 py-0.5 rounded text-[8.5px] sm:text-[9px] tracking-wide uppercase whitespace-nowrap ${s.className}`}>
                           {s.label}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-right">
+                      <td className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 text-right whitespace-nowrap">
                         <span className="text-primary hover:text-primary-dark inline-flex items-center gap-1 font-bold">
                           ดูประวัติเชิงลึก
                           <svg className="w-3.5 h-3.5 transform group-hover:translate-x-1.5 transition-transform duration-300 ease-out" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">

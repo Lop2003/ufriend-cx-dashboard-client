@@ -20,28 +20,50 @@ export default function MainLayout({ children }: MainLayoutProps) {
   } = useCX();
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
   // Dynamic list of branches
   const uniqueBranches = Array.from(new Set(customers.map((c) => c.branch)));
 
   return (
     <div
-      className="flex h-screen overflow-hidden font-body text-slate-800 antialiased p-6 gap-6 bg-cover bg-center bg-no-repeat"
+      className="flex flex-col md:flex-row min-h-screen md:h-screen overflow-y-auto md:overflow-hidden font-body text-slate-800 antialiased p-0 sm:p-4 md:p-6 gap-0 md:gap-6 bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: `url(${azulBg})` }}
     >
+      {/* Mobile Drawer Overlay Backdrop */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-40 md:hidden cursor-pointer"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* 🚀 Floating uFriend Sidebar with self-contained Toggle Collapse */}
       <Sidebar
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* 🖥️ Main Display Canvas */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-visible md:overflow-hidden">
         {/* 🔮 Soft UI Extruded Main Panel */}
-        <div className="flex-1 flex flex-col soft-extruded overflow-hidden relative">
+        <div className="flex-1 flex flex-col soft-extruded overflow-visible md:overflow-hidden relative">
           
           {/* Navigation Status Bar (Modern Top Header with Integrated Filters) */}
-          <header className="h-16 bg-white border-b border-slate-100 px-8 flex items-center justify-between shrink-0 rounded-t-[24px]">
+          <header className="h-16 bg-white border-b border-slate-100 px-4 md:px-8 flex items-center justify-between shrink-0 rounded-none sm:rounded-t-[24px]">
+            {/* Hamburger Button for Mobile */}
+            <button 
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="md:hidden p-2 -ml-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all shrink-0 cursor-pointer border border-slate-100"
+              title="เปิดเมนูนำทาง"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
+              </svg>
+            </button>
+
             <div className="flex items-center gap-2 mr-4">
               <span className="text-[9px] bg-primary-light text-primary font-bold px-2 py-0.5 rounded uppercase tracking-wider">
                 {currentPage}
@@ -61,7 +83,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
             {/* Integrated Top Filter Deck */}
             {currentPage === 'dashboard' ? (
-              <div className="flex items-center gap-3 flex-1 max-w-xl mx-4">
+              <div className="hidden md:flex items-center gap-3 flex-1 max-w-xl mx-4">
                 {/* Search Box */}
                 <div className="relative flex-1">
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 pointer-events-none z-10">
@@ -119,7 +141,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           </header>
 
           {/* Page Containers */}
-          <div className="flex-1 overflow-y-auto p-8">
+          <div className="flex-1 overflow-y-visible md:overflow-y-auto p-4 md:p-8">
             {children}
           </div>
         </div>

@@ -181,10 +181,10 @@ export default function DashboardChart() {
             <p className="text-[11px] text-gray-400">ประมวลผลข้อมูลความพึงพอใจและสถิติสัญญาจำแนกแต่ละสาขา</p>
           </div>
         </div>
-        <div className="flex bg-gray-100 p-1 rounded-lg self-start">
+        <div className="flex bg-gray-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto scrollbar-none self-stretch sm:self-start gap-1">
           <button
             onClick={() => setActiveTab('branch')}
-            className={`px-3 py-1.5 rounded text-[11px] font-bold tracking-wide transition-all ${
+            className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-3 py-1.5 rounded text-[11px] font-bold tracking-wide transition-all ${
               activeTab === 'branch'
                 ? 'bg-white text-primary shadow-sm'
                 : 'text-gray-500 hover:text-gray-900'
@@ -194,7 +194,7 @@ export default function DashboardChart() {
           </button>
           <button
             onClick={() => setActiveTab('sentiment')}
-            className={`px-3 py-1.5 rounded text-[11px] font-bold tracking-wide transition-all ${
+            className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-3 py-1.5 rounded text-[11px] font-bold tracking-wide transition-all ${
               activeTab === 'sentiment'
                 ? 'bg-white text-primary shadow-sm'
                 : 'text-gray-500 hover:text-gray-900'
@@ -204,7 +204,7 @@ export default function DashboardChart() {
           </button>
           <button
             onClick={() => setActiveTab('weekly')}
-            className={`px-3 py-1.5 rounded text-[11px] font-bold tracking-wide transition-all ${
+            className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-3 py-1.5 rounded text-[11px] font-bold tracking-wide transition-all ${
               activeTab === 'weekly'
                 ? 'bg-white text-primary shadow-sm'
                 : 'text-gray-500 hover:text-gray-900'
@@ -356,11 +356,11 @@ export default function DashboardChart() {
               {lineCoords.map((pt, idx) => (
                 <div 
                   key={idx}
-                  className={`absolute -translate-y-1/2 bg-slate-900 text-white text-[9px] px-1 py-0.5 rounded font-bold transition-all duration-500 ${
+                  className={`absolute -translate-x-1/2 -translate-y-6 bg-slate-900 text-white text-[9px] px-1.5 py-0.5 rounded-lg font-bold transition-all duration-500 shadow-md ${
                     animate ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
                   }`}
                   style={{
-                    left: `${(pt.x / 400) * 100 - 9}%`,
+                    left: `${(pt.x / 400) * 100}%`,
                     top: `${(pt.y / 120) * 100}%`,
                     transitionDelay: `${idx * 100}ms`
                   }}
@@ -370,12 +370,19 @@ export default function DashboardChart() {
               ))}
             </div>
 
-            <div className={`flex justify-between items-center px-4 mt-2 border-t border-gray-100 pt-2 transition-opacity duration-700 ${animate ? 'opacity-100' : 'opacity-0'}`}>
-              {weeklyTrends.map((t, idx) => (
-                <span key={idx} className="text-[10px] text-gray-500 font-bold">
-                  {t.week} (คะแนน: {t.score.toFixed(1)})
-                </span>
-              ))}
+            <div className={`relative h-6 mt-2 border-t border-gray-100 pt-2 transition-opacity duration-700 ${animate ? 'opacity-100' : 'opacity-0'}`}>
+              {weeklyTrends.map((t, idx) => {
+                const pct = (lineCoords[idx].x / 400) * 100;
+                return (
+                  <span 
+                    key={idx} 
+                    className="absolute -translate-x-1/2 text-[9px] sm:text-[10px] text-gray-500 font-bold whitespace-nowrap"
+                    style={{ left: `${pct}%` }}
+                  >
+                    {t.week} ({t.score.toFixed(1)} ★)
+                  </span>
+                );
+              })}
             </div>
           </div>
         )}

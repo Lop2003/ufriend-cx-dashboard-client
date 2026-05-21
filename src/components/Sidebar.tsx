@@ -4,19 +4,26 @@ import uFriendLogo from '../../Icon.png';
 interface SidebarProps {
   isCollapsed?: boolean;
   onToggleCollapse: () => void;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export default function Sidebar({
   isCollapsed = false,
   onToggleCollapse,
+  isMobileOpen = false,
+  onCloseMobile,
 }: SidebarProps) {
   const { currentPage, setCurrentPage, customers, selectedCustomerId, setSelectedCustomerId } = useCX();
 
   return (
     <aside
-      className={`bg-gradient-to-b from-[#0B0080] via-[#0D009C] to-[#0051BA] rounded-[24px] flex flex-col justify-between shadow-[8px_8px_24px_rgba(0,29,66,0.15)] border border-primary/20 relative overflow-hidden shrink-0 transition-all duration-300 ease-in-out ${
-        isCollapsed ? 'w-20' : 'w-64'
-      }`}
+      className={`bg-gradient-to-b from-[#0B0080] via-[#0D009C] to-[#0051BA] flex flex-col justify-between shadow-[8px_8px_24px_rgba(0,29,66,0.15)] border border-primary/20 overflow-hidden shrink-0 transition-all duration-300 ease-in-out z-50
+        fixed md:relative inset-y-0 left-0 md:translate-x-0 ${
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        } ${isCollapsed ? 'w-64 md:w-20' : 'w-64'} ${
+          isMobileOpen ? 'rounded-none shadow-2xl h-full' : 'rounded-[24px]'
+        }`}
     >
       {/* Decorative Premium Mesh Blurs */}
       <div className="absolute -top-10 -left-10 w-32 h-32 bg-primary/20 rounded-full blur-2xl pointer-events-none"></div>
@@ -27,11 +34,11 @@ export default function Sidebar({
         <div
           className={`border-b border-white/10 flex transition-all duration-300 ${
             isCollapsed 
-              ? 'h-24 flex-col items-center justify-center gap-2 px-0 py-3' 
+              ? 'h-24 flex-col items-center justify-center gap-2 px-0 py-3 md:px-0 md:py-3' 
               : 'h-16 flex-row items-center justify-between px-6'
           }`}
         >
-          <div className={`flex items-center ${isCollapsed ? 'gap-0' : 'gap-3'}`}>
+          <div className="flex items-center gap-3">
             <img
               src={uFriendLogo}
               alt="uFriend CX Logo"
@@ -39,7 +46,7 @@ export default function Sidebar({
             />
             <div
               className={`flex flex-col transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden ${
-                isCollapsed ? 'max-w-0 opacity-0 pointer-events-none' : 'max-w-[150px] opacity-100'
+                isCollapsed ? 'md:max-w-0 md:opacity-0 md:pointer-events-none' : 'max-w-[150px] opacity-100'
               }`}
             >
               <span className="font-display font-bold text-white tracking-wide text-md">uFriend CX</span>
@@ -47,24 +54,39 @@ export default function Sidebar({
             </div>
           </div>
 
-          {/* 🛠️ Integrated Premium Toggle Sidebar Button */}
-          <button
-            onClick={onToggleCollapse}
-            title={isCollapsed ? "ขยายแถบเมนูข้าง" : "พับแถบเมนูข้าง"}
-            className="rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-sky-100 flex items-center justify-center transition-all cursor-pointer hover:text-white shrink-0 active:scale-95 w-7 h-7"
-          >
-            <svg
-              className={`w-3.5 h-3.5 transform transition-transform duration-300 ease-out ${
-                isCollapsed ? 'rotate-180' : ''
-              }`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
+          <div className="flex items-center gap-2">
+            {/* 🛠️ Integrated Premium Toggle Sidebar Button */}
+            <button
+              onClick={onToggleCollapse}
+              title={isCollapsed ? "ขยายแถบเมนูข้าง" : "พับแถบเมนูข้าง"}
+              className="hidden md:flex rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-sky-100 items-center justify-center transition-all cursor-pointer hover:text-white shrink-0 active:scale-95 w-7 h-7"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
-          </button>
+              <svg
+                className={`w-3.5 h-3.5 transform transition-transform duration-300 ease-out ${
+                  isCollapsed ? 'rotate-180' : ''
+                }`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              </svg>
+            </button>
+
+            {/* Mobile Close Button (Shown only on Mobile Drawer) */}
+            {onCloseMobile && (
+              <button
+                onClick={onCloseMobile}
+                title="ปิดแถบเมนู"
+                className="md:hidden rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-sky-100 flex items-center justify-center transition-all cursor-pointer hover:text-white shrink-0 active:scale-95 w-7 h-7"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Navigation Items */}

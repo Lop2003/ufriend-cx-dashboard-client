@@ -92,10 +92,10 @@ export default function CustomerDetailPage({
   return (
     <div className="space-y-6 font-body text-slate-800 antialiased">
       {/* Top action bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <button
           onClick={handleBack}
-          className="text-xs font-bold text-primary hover:text-primary-dark transition-all flex items-center gap-1.5 font-display"
+          className="text-xs font-bold text-primary hover:text-primary-dark transition-all flex items-center gap-1.5 font-display self-start"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -105,7 +105,7 @@ export default function CustomerDetailPage({
 
         <button
           onClick={handleAddFollowUp}
-          className="bg-primary hover:bg-primary-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 hover-shimmer"
+          className="bg-primary hover:bg-primary-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 hover-shimmer w-full sm:w-auto justify-center"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
