@@ -23,10 +23,10 @@ export default function FollowUpForm() {
   }, [customerId, selectedCust]);
 
   const handleCancel = () => {
-    setCurrentPage('dashboard');
+    setCurrentPage('customers');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerId) {
       setError('กรุณาเลือกรายชื่อลูกค้าเพื่อบันทึกการติดตาม');
@@ -37,11 +37,16 @@ export default function FollowUpForm() {
       return;
     }
 
-    addFollowUp({
+    const success = await addFollowUp({
       customer_id: customerId,
       type,
       note: note.trim()
     });
+
+    if (success) {
+      setNote('');
+      setError('');
+    }
   };
 
   return (

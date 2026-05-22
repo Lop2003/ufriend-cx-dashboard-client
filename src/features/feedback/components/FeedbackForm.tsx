@@ -10,10 +10,10 @@ export default function FeedbackForm() {
   const [error, setError] = useState('');
 
   const handleCancel = () => {
-    setCurrentPage('dashboard');
+    setCurrentPage('customers');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCustomerId) {
       setError('กรุณาเลือกบัญชีลูกค้าเพื่อบันทึกคำติชม');
@@ -24,12 +24,20 @@ export default function FeedbackForm() {
       return;
     }
 
-    addFeedback({
+    const success = await addFeedback({
       customer_id: selectedCustomerId,
       rating,
       comment: comment.trim(),
       category
     });
+
+    if (success) {
+      setSelectedCustomerId('');
+      setRating(5);
+      setComment('');
+      setCategory('service');
+      setError('');
+    }
   };
 
   return (

@@ -51,11 +51,8 @@ export default function CustomerDetailPage({
   const { 
     selectedCustomerId, 
     customers, 
-    feedbacks, 
-    followUps, 
     setCurrentPage, 
     setIsDetailModalOpen,
-    isApiConnected,
   } = useCX();
 
   // API-fetched detail state
@@ -66,8 +63,9 @@ export default function CustomerDetailPage({
   const [detailLoading, setDetailLoading] = useState(false);
 
   // Fetch from API when customer is selected
+  // Deduplication of concurrent requests is handled at the API layer (api.ts)
   useEffect(() => {
-    if (!selectedCustomerId || !isApiConnected) return;
+    if (!selectedCustomerId) return;
 
     let cancelled = false;
     setDetailLoading(true);
@@ -82,7 +80,6 @@ export default function CustomerDetailPage({
         }
       })
       .catch(() => {
-        // Silently fall back to context data
         if (!cancelled) setApiDetail(null);
       })
       .finally(() => {
@@ -90,7 +87,7 @@ export default function CustomerDetailPage({
       });
 
     return () => { cancelled = true; };
-  }, [selectedCustomerId, isApiConnected]);
+  }, [selectedCustomerId]);
 
   const customer = customers.find((c) => c.id === selectedCustomerId);
 
@@ -99,7 +96,7 @@ export default function CustomerDetailPage({
     if (onBack) {
       onBack();
     } else {
-      setCurrentPage('dashboard');
+      setCurrentPage('customers');
     }
   };
 
@@ -125,13 +122,9 @@ export default function CustomerDetailPage({
     );
   }
 
-  // Use API data if available, else fall back to context data
-  const customerFeedbacks = apiDetail
-    ? apiDetail.feedbacks
-    : feedbacks.filter((fb) => fb.customer_id === customer.id);
-  const customerFollowUps = apiDetail
-    ? apiDetail.follow_ups
-    : followUps.filter((fu) => fu.customer_id === customer.id);
+  // Use API data
+  const customerFeedbacks = apiDetail?.feedbacks || [];
+  const customerFollowUps = apiDetail?.follow_ups || [];
 
   return (
     <div className="space-y-6 font-body text-slate-800 antialiased">
@@ -272,7 +265,7 @@ export default function CustomerDetailPage({
                       <div className="flex items-center justify-between pt-1">
                         <span className="text-[10px] text-gray-400 font-bold">โดย: ฝ่ายบริการลูกค้า uFriend</span>
                         <div className="flex items-center gap-2">
-                          {fu.status === 'pending' && isApiConnected && (
+                          {fu.status === 'pending' && (
                             <button
                               onClick={async () => {
                                 try {

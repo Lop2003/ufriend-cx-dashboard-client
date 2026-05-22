@@ -5,7 +5,7 @@ export default function AddFeedbackPage() {
   const { setCurrentPage } = useCX();
 
   const handleCancel = () => {
-    setCurrentPage('dashboard');
+    setCurrentPage('customers');
   };
 
   return (
@@ -15,7 +15,7 @@ export default function AddFeedbackPage() {
           onClick={handleCancel}
           className="text-sm font-semibold text-primary hover:text-primary-dark transition-all flex items-center gap-1"
         >
-          ← กลับแดชบอร์ดหลัก
+          ← กลับหน้ารายชื่อลูกค้า
         </button>
       </div>
 

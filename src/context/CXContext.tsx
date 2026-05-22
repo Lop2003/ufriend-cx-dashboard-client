@@ -1,6 +1,5 @@
 import { createContext, useState, useMemo, useEffect, useCallback, ReactNode } from 'react';
 import { Customer, Feedback, FollowUp } from '../types';
-import { initialCustomers, initialFeedbacks, initialFollowUps } from '../data/mockData';
 import * as api from '../services/api';
 import { showToast } from '../components/Toast';
 
@@ -20,8 +19,8 @@ interface CXContextType {
   customers: Customer[];
   feedbacks: Feedback[];
   followUps: FollowUp[];
-  addFeedback: (newFb: Omit<Feedback, 'id' | 'sentiment' | 'created_at'>) => void;
-  addFollowUp: (newFu: Omit<FollowUp, 'id' | 'status' | 'created_at'>) => void;
+  addFeedback: (newFb: Omit<Feedback, 'id' | 'sentiment' | 'created_at'>) => Promise<boolean>;
+  addFollowUp: (newFu: Omit<FollowUp, 'id' | 'status' | 'created_at'>) => Promise<boolean>;
 
   // Filter State
   searchQuery: string;
@@ -70,7 +69,7 @@ export function CXProvider({ children }: CXProviderProps) {
   // Data State
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
-  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [followUps] = useState<FollowUp[]>([]);
   const [branchStats, setBranchStats] = useState<api.BranchStatData[]>([]);
 
   // Loading & Error State
@@ -112,20 +111,9 @@ export function CXProvider({ children }: CXProviderProps) {
       setFeedbacks(feedbacksData);
       setIsApiConnected(true);
     } catch (err) {
-      console.warn('Dashboard API unavailable, falling back to mock stats:', err);
-
-      // Construct Mock Stats Summary
-      setApiSummary({
-        total_customers: initialCustomers.length,
-        avg_rating: initialFeedbacks.reduce((acc, f) => acc + f.rating, 0) / initialFeedbacks.length,
-        overdue_count: initialCustomers.filter(c => c.status === 'overdue').length,
-        active_count: initialCustomers.filter(c => c.status === 'active').length,
-        completed_count: initialCustomers.filter(c => c.status === 'completed').length,
-      });
-      setFeedbacks(initialFeedbacks);
-      setFollowUps(initialFollowUps);
+      console.error('Dashboard API unavailable:', err);
       setIsApiConnected(false);
-      setApiError('ไม่สามารถเชื่อมต่อ API สถิติได้ — กำลังใช้ข้อมูลตัวอย่าง (Mock Data)');
+      setApiError('ไม่สามารถเชื่อมต่อ API สถิติได้');
     } finally {
       setIsLoading(false);
     }
@@ -138,22 +126,7 @@ export function CXProvider({ children }: CXProviderProps) {
       setBranchStats(data);
     } catch (err) {
       console.warn('Failed to fetch branch stats', err);
-      // Construct Mock Branch Stats on failure
-      const branchMap = new Map<string, { customer_count: number; avg_rating: number; overdue_count: number }>();
-      initialCustomers.forEach(c => {
-        if (branch && c.branch !== branch) return; // filter by branch in mock fallback
-        if (!branchMap.has(c.branch)) branchMap.set(c.branch, { customer_count: 0, avg_rating: 0, overdue_count: 0 });
-        const item = branchMap.get(c.branch)!;
-        item.customer_count++;
-        if (c.status === 'overdue') item.overdue_count++;
-      });
-      const fallbackStats = Array.from(branchMap.entries()).map(([br, item]) => {
-        const branchCustomerIds = new Set(initialCustomers.filter(c => c.branch === br).map(c => c.id));
-        const fbForBranch = initialFeedbacks.filter(f => branchCustomerIds.has(f.customer_id));
-        const avg = fbForBranch.length > 0 ? fbForBranch.reduce((a, f) => a + f.rating, 0) / fbForBranch.length : 0;
-        return { branch: br, ...item, avg_rating: parseFloat(avg.toFixed(1)) };
-      });
-      setBranchStats(fallbackStats);
+      setBranchStats([]);
     }
   }, []);
 
@@ -164,65 +137,25 @@ export function CXProvider({ children }: CXProviderProps) {
     }
   }, [selectedBranch, fetchBranchStats]);
 
-  // 2. Decoupled Customer List Fetcher (Customers listing + Feedbacks)
+  // 2. Decoupled Customer List Fetcher (Customers listing only)
   const loadCustomerListData = useCallback(async () => {
     setIsLoading(true);
     setApiError(null);
     try {
-      const [customersData, feedbacksData] = await Promise.all([
-        api.fetchCustomers({
-          search: searchQuery,
-          branch: selectedBranch,
-          status: selectedStatus,
-          sortBy,
-          sortOrder,
-        }),
-        api.fetchFeedbacks(),
-      ]);
-      setCustomers(customersData);
-      setFeedbacks(feedbacksData);
+      const customersData = await api.fetchCustomers({
+        search: searchQuery,
+        branch: selectedBranch,
+        status: selectedStatus,
+        sortBy,
+        sortOrder,
+      });
+      setCustomers(customersData || []);
       setIsApiConnected(true);
     } catch (err) {
-      console.warn('Customer API unavailable, falling back to mock data:', err);
-
-      // Client-side filtering & sorting for Mock Data fallback
-      let localCustomers = [...initialCustomers];
-      if (searchQuery) {
-        localCustomers = localCustomers.filter(c =>
-          c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.phone.includes(searchQuery) ||
-          c.product.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      }
-      if (selectedBranch) {
-        localCustomers = localCustomers.filter(c => c.branch === selectedBranch);
-      }
-      if (selectedStatus) {
-        localCustomers = localCustomers.filter(c => c.status === selectedStatus);
-      }
-      localCustomers.sort((a, b) => {
-        let valA: any = a[sortBy as keyof typeof a];
-        let valB: any = b[sortBy as keyof typeof b];
-
-        if (valA === undefined) valA = '';
-        if (valB === undefined) valB = '';
-
-        if (typeof valA === 'string') {
-          return sortOrder === 'asc'
-            ? valA.localeCompare(valB)
-            : valB.localeCompare(valA);
-        } else {
-          return sortOrder === 'asc'
-            ? (valA > valB ? 1 : -1)
-            : (valB > valA ? 1 : -1);
-        }
-      });
-
-      setCustomers(localCustomers);
-      setFeedbacks(initialFeedbacks);
-      setFollowUps(initialFollowUps);
+      console.warn('Customer API unavailable:', err);
+      setCustomers([]);
       setIsApiConnected(false);
-      setApiError('ไม่สามารถเชื่อมต่อ API รายชื่อลูกค้าได้ — กำลังใช้ข้อมูลตัวอย่าง (Mock Data)');
+      setApiError('ไม่สามารถเชื่อมต่อ API รายชื่อลูกค้าได้');
     } finally {
       setIsLoading(false);
     }
@@ -235,21 +168,21 @@ export function CXProvider({ children }: CXProviderProps) {
     }
   }, [currentPage, loadDashboardData]);
 
-  // Load customer table list when switching to 'customers' page or when active filters change
+  // Load customer table list when switching to 'customers', 'add-feedback', or 'add-followup' pages
   useEffect(() => {
-    if (currentPage === 'customers') {
+    if (currentPage === 'customers' || currentPage === 'add-feedback' || currentPage === 'add-followup') {
       loadCustomerListData();
     }
   }, [currentPage, loadCustomerListData]);
 
-  // Set default selected customer if none selected or if selected customer is no longer in the list
+  // Set default selected customer if none selected or if selected customer is no longer in the list (only in customers list view with modal closed)
   useEffect(() => {
-    if (customers.length > 0) {
+    if (currentPage === 'customers' && !isDetailModalOpen && customers.length > 0) {
       if (!selectedCustomerId || !customers.some(c => c.id === selectedCustomerId)) {
         setSelectedCustomerId(customers[0].id);
       }
     }
-  }, [customers, selectedCustomerId]);
+  }, [customers, selectedCustomerId, currentPage, isDetailModalOpen]);
 
   // Compatibility aliases
   const filteredCustomers = customers;
@@ -304,70 +237,39 @@ export function CXProvider({ children }: CXProviderProps) {
 
   // Add Feedback Action — POST to API then refetch
   const addFeedback = async (newFb: Omit<Feedback, 'id' | 'sentiment' | 'created_at'>) => {
-    if (isApiConnected) {
-      try {
-        await api.createFeedback({
-          customer_id: newFb.customer_id,
-          rating: newFb.rating,
-          comment: newFb.comment,
-          category: newFb.category,
-        });
-        showToast('success', 'บันทึกคำติชมเรียบร้อยแล้ว ✨');
-        await Promise.all([loadDashboardData(), loadCustomerListData()]);
-      } catch (err) {
-        showToast('error', `บันทึกไม่สำเร็จ: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        return;
-      }
-    } else {
-      // Fallback: local state
-      let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
-      if (newFb.rating >= 4) sentiment = 'positive';
-      else if (newFb.rating <= 2) sentiment = 'negative';
-
-      const created: Feedback = {
-        ...newFb,
-        id: 'f_' + Math.random().toString(36).substring(2, 11),
-        sentiment,
-        created_at: new Date().toISOString(),
-      };
-      setFeedbacks((prev) => [created, ...prev]);
-      showToast('success', 'บันทึกคำติชมเรียบร้อยแล้ว (Mock Mode) ✨');
+    setSelectedCustomerId(newFb.customer_id);
+    try {
+      await api.createFeedback({
+        customer_id: newFb.customer_id,
+        rating: newFb.rating,
+        comment: newFb.comment,
+        category: newFb.category,
+      });
+      showToast('success', 'บันทึกคำติชมเรียบร้อยแล้ว ✨');
+      setIsDetailModalOpen(true);
+      return true;
+    } catch (err) {
+      showToast('error', `บันทึกไม่สำเร็จ: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      return false;
     }
-
-    setCurrentPage('dashboard');
-    setIsDetailModalOpen(true);
   };
 
   // Add Follow-Up Action — POST to API then refetch
   const addFollowUp = async (newFu: Omit<FollowUp, 'id' | 'status' | 'created_at'>) => {
-    if (isApiConnected) {
-      try {
-        await api.createFollowUp({
-          customer_id: newFu.customer_id,
-          type: newFu.type,
-          note: newFu.note,
-        });
-        showToast('success', 'บันทึกการติดตามเรียบร้อยแล้ว 📞');
-        await Promise.all([loadDashboardData(), loadCustomerListData()]);
-      } catch (err) {
-        showToast('error', `บันทึกไม่สำเร็จ: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        return;
-      }
-    } else {
-      // Fallback: local state
-      const created: FollowUp = {
-        ...newFu,
-        id: 'fu_' + Math.random().toString(36).substring(2, 11),
-        status: 'pending',
-        created_at: new Date().toISOString(),
-      };
-      setFollowUps((prev) => [created, ...prev]);
-      showToast('success', 'บันทึกการติดตามเรียบร้อยแล้ว (Mock Mode) 📞');
-    }
-
     setSelectedCustomerId(newFu.customer_id);
-    setCurrentPage('dashboard');
-    setIsDetailModalOpen(true);
+    try {
+      await api.createFollowUp({
+        customer_id: newFu.customer_id,
+        type: newFu.type,
+        note: newFu.note,
+      });
+      showToast('success', 'บันทึกการติดตามเรียบร้อยแล้ว 📞');
+      setIsDetailModalOpen(true);
+      return true;
+    } catch (err) {
+      showToast('error', `บันทึกไม่สำเร็จ: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      return false;
+    }
   };
 
   // Navigate to customer details (opens modal)

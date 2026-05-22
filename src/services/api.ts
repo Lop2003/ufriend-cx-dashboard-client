@@ -50,8 +50,20 @@ export async function fetchCustomers(params?: FetchCustomersParams): Promise<Cus
   return request<Customer[]>(url);
 }
 
+// ─── Request deduplication for detail fetches ────────────────────────
+// If a fetch for the same customer ID is already in-flight, reuse the
+// pending promise instead of firing a duplicate HTTP request.
+const pendingDetailRequests = new Map<string, Promise<Customer & { feedbacks: Feedback[]; follow_ups: FollowUp[] }>>();
+
 export async function fetchCustomerDetail(id: string) {
-  return request<Customer & { feedbacks: Feedback[]; follow_ups: FollowUp[] }>(`/api/customers/${id}`);
+  const existing = pendingDetailRequests.get(id);
+  if (existing) return existing;
+
+  const promise = request<Customer & { feedbacks: Feedback[]; follow_ups: FollowUp[] }>(`/api/customers/${id}`)
+    .finally(() => pendingDetailRequests.delete(id));
+
+  pendingDetailRequests.set(id, promise);
+  return promise;
 }
 
 // ─── Stats ───────────────────────────────────────────────────────────
