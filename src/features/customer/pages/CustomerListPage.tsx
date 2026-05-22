@@ -1,6 +1,4 @@
-import { useState } from 'react';
-import useCX from '../../../hooks/useCX';
-
+import { useCX } from '../../../hooks/useCX';
 
 const STATUS_MAP = {
   active: {
@@ -18,57 +16,71 @@ const STATUS_MAP = {
 } as const;
 
 export default function CustomerListPage() {
-  const { customers, navigateToCustomerDetail } = useCX();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [branchFilter, setBranchFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const {
+    customers,
+    navigateToCustomerDetail,
+    searchQuery,
+    setSearchQuery,
+    selectedBranch,
+    setSelectedBranch,
+    selectedStatus,
+    setSelectedStatus,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder,
+  } = useCX();
 
-  // Stats calculation
+  // Stats calculation from the currently visible customer list
   const total = customers.length;
   const active = customers.filter(c => c.status === 'active').length;
   const overdue = customers.filter(c => c.status === 'overdue').length;
   const completed = customers.filter(c => c.status === 'completed').length;
 
-  const branches = Array.from(new Set(customers.map(c => c.branch)));
+  const branches = ["วงเวียนใหญ่", "รังสิต", "ลาดพร้าว", "สยาม"];
 
-  // Client-side search and filtering for this specific view
-  const filteredCustomers = customers.filter((c) => {
-    const matchesSearch =
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.phone.includes(searchTerm) ||
-      c.product.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesBranch = branchFilter === '' || c.branch === branchFilter;
-    const matchesStatus = statusFilter === '' || c.status === statusFilter;
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('desc');
+    }
+  };
 
-    return matchesSearch && matchesBranch && matchesStatus;
-  });
+  const renderSortIcon = (field: string) => {
+    if (sortBy !== field) return <span className="text-gray-300 ml-1">↕</span>;
+    return sortOrder === 'asc' 
+      ? <span className="text-primary ml-1">▲</span>
+      : <span className="text-primary ml-1">▼</span>;
+  };
 
   return (
     <div className="space-y-6 font-body text-slate-800 antialiased animate-fade-in-up">
       {/* 🔮 Quick Customer Stats Deck (Soft UI) */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <div 
-          onClick={() => setStatusFilter('')}
+          onClick={() => setSelectedStatus('')}
           className={`bg-white p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col justify-between min-h-[5rem] h-auto cursor-pointer active:scale-95 hover:shadow-md transition-all duration-300 ${
-            statusFilter === '' ? 'ring-2 ring-primary border-transparent scale-[1.01] bg-blue-50/20' : 'border-gray-100'
+            selectedStatus === '' ? 'ring-2 ring-primary border-transparent scale-[1.01] bg-blue-50/20' : 'border-gray-100'
           }`}
         >
           <span className="text-[9px] xs:text-[10px] lg:text-[9px] xl:text-[10px] text-gray-400 font-extrabold uppercase tracking-wider whitespace-nowrap">ลูกค้าทั้งหมด</span>
           <span className="text-lg xs:text-xl lg:text-lg xl:text-xl font-black text-primary-dark mt-1">{total} ราย</span>
         </div>
         <div 
-          onClick={() => setStatusFilter('active')}
+          onClick={() => setSelectedStatus('active')}
           className={`bg-white p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col justify-between min-h-[5rem] h-auto cursor-pointer active:scale-95 hover:shadow-md transition-all duration-300 ${
-            statusFilter === 'active' ? 'ring-2 ring-emerald-500 border-transparent scale-[1.01] bg-emerald-50/20' : 'border-gray-100'
+            selectedStatus === 'active' ? 'ring-2 ring-emerald-500 border-transparent scale-[1.01] bg-emerald-50/20' : 'border-gray-100'
           }`}
         >
           <span className="text-[9px] xs:text-[10px] lg:text-[9px] xl:text-[10px] text-gray-400 font-extrabold uppercase tracking-wider text-status-active whitespace-nowrap">ผ่อนชำระปกติ</span>
           <span className="text-lg xs:text-xl lg:text-lg xl:text-xl font-black text-status-active mt-1">{active} ราย</span>
         </div>
         <div 
-          onClick={() => setStatusFilter('overdue')}
+          onClick={() => setSelectedStatus('overdue')}
           className={`bg-white p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col justify-between min-h-[5rem] h-auto relative overflow-hidden group cursor-pointer active:scale-95 hover:shadow-md transition-all duration-300 ${
-            statusFilter === 'overdue' ? 'ring-2 ring-red-500 border-transparent scale-[1.01] bg-red-50/20' : 'border-gray-100'
+            selectedStatus === 'overdue' ? 'ring-2 ring-red-500 border-transparent scale-[1.01] bg-red-50/20' : 'border-gray-100'
           }`}
         >
           <span className="text-[9px] xs:text-[10px] lg:text-[9px] xl:text-[10px] text-gray-400 font-extrabold uppercase tracking-wider text-status-overdue flex items-center gap-1 whitespace-nowrap">
@@ -78,9 +90,9 @@ export default function CustomerListPage() {
           <span className="text-lg xs:text-xl lg:text-lg xl:text-xl font-black text-status-overdue mt-1">{overdue} ราย</span>
         </div>
         <div 
-          onClick={() => setStatusFilter('completed')}
+          onClick={() => setSelectedStatus('completed')}
           className={`bg-white p-3 sm:p-4 rounded-2xl border shadow-sm flex flex-col justify-between min-h-[5rem] h-auto cursor-pointer active:scale-95 hover:shadow-md transition-all duration-300 ${
-            statusFilter === 'completed' ? 'ring-2 ring-slate-400 border-transparent scale-[1.01] bg-slate-50' : 'border-gray-100'
+            selectedStatus === 'completed' ? 'ring-2 ring-slate-400 border-transparent scale-[1.01] bg-slate-50' : 'border-gray-100'
           }`}
         >
           <span className="text-[9px] xs:text-[10px] lg:text-[9px] xl:text-[10px] text-gray-400 font-extrabold uppercase tracking-wider text-status-completed whitespace-nowrap">จบสัญญาแล้ว</span>
@@ -98,8 +110,8 @@ export default function CustomerListPage() {
           </span>
           <input
             type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-all placeholder:text-gray-400 text-gray-800 soft-recessed border-0"
             placeholder="ค้นหาชื่อลูกค้า, เบอร์โทร, สินค้าผ่อน..."
           />
@@ -107,8 +119,8 @@ export default function CustomerListPage() {
 
         <div className="flex gap-3 w-full md:w-auto">
           <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
+            value={selectedBranch}
+            onChange={(e) => setSelectedBranch(e.target.value)}
             className="px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-all text-gray-700 soft-recessed border-0 w-full md:w-40"
           >
             <option value="">สาขา: ทั้งหมด</option>
@@ -118,8 +130,8 @@ export default function CustomerListPage() {
           </select>
 
           <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
             className="px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-all text-gray-700 soft-recessed border-0 w-full md:w-40"
           >
             <option value="">สถานะ: ทั้งหมด</option>
@@ -136,25 +148,61 @@ export default function CustomerListPage() {
           <table className="min-w-full divide-y divide-gray-100 text-left">
             <thead className="bg-slate-50/75 border-b border-gray-200 text-gray-400 text-[10px] sm:text-[11px] font-black uppercase tracking-wider">
               <tr>
-                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 font-display whitespace-nowrap">รหัสสัญญา</th>
-                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 font-display whitespace-nowrap">ชื่อลูกค้าตามสัญญา</th>
-                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap">เบอร์โทรศัพท์ติดต่อ</th>
-                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap">สินค้าสัญญาผ่อน</th>
-                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap">สาขาที่ดูแล</th>
-                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap">ระยะเวลา</th>
-                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap">สถานะบัญชี</th>
-                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 text-right whitespace-nowrap">การจัดการ</th>
+                <th 
+                  scope="col" 
+                  onClick={() => handleSort('created_at')}
+                  className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 font-display whitespace-nowrap cursor-pointer select-none hover:text-primary transition-colors"
+                >
+                  รหัสสัญญา {renderSortIcon('created_at')}
+                </th>
+                <th 
+                  scope="col" 
+                  onClick={() => handleSort('name')}
+                  className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 font-display whitespace-nowrap cursor-pointer select-none hover:text-primary transition-colors"
+                >
+                  ชื่อลูกค้าตามสัญญา {renderSortIcon('name')}
+                </th>
+                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap">
+                  เบอร์โทรศัพท์ติดต่อ
+                </th>
+                <th 
+                  scope="col" 
+                  onClick={() => handleSort('product')}
+                  className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap cursor-pointer select-none hover:text-primary transition-colors"
+                >
+                  สินค้าสัญญาผ่อน {renderSortIcon('product')}
+                </th>
+                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap">
+                  สาขาที่ดูแล
+                </th>
+                <th 
+                  scope="col" 
+                  onClick={() => handleSort('plan_months')}
+                  className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap cursor-pointer select-none hover:text-primary transition-colors"
+                >
+                  ระยะเวลา {renderSortIcon('plan_months')}
+                </th>
+                <th 
+                  scope="col" 
+                  onClick={() => handleSort('status')}
+                  className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 whitespace-nowrap cursor-pointer select-none hover:text-primary transition-colors"
+                >
+                  สถานะบัญชี {renderSortIcon('status')}
+                </th>
+                <th scope="col" className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3.5 text-right whitespace-nowrap">
+                  การจัดการ
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100 text-[10px] sm:text-[11px] font-semibold text-gray-700">
-              {filteredCustomers.length === 0 ? (
+              {customers.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-3 sm:px-4 md:px-5 py-10 text-center text-gray-400">
                     ไม่พบรายชื่อบัญชีลูกค้าตามคำค้นหาและเงื่อนไขตัวกรอง
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map((c) => {
+                customers.map((c) => {
                   const isOverdue = c.status === 'overdue';
                   const s = STATUS_MAP[c.status] ?? STATUS_MAP.completed;
                   return (

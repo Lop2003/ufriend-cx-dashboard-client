@@ -28,9 +28,26 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return json.data;
 }
 
-// ─── Customer Queries ────────────────────────────────────────────────
-export async function fetchCustomers(): Promise<Customer[]> {
-  return request<Customer[]>('/api/customers/');
+export interface FetchCustomersParams {
+  search?: string;
+  branch?: string;
+  status?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export async function fetchCustomers(params?: FetchCustomersParams): Promise<Customer[]> {
+  const query = new URLSearchParams();
+  if (params) {
+    if (params.search) query.append('search', params.search);
+    if (params.branch) query.append('branch', params.branch);
+    if (params.status) query.append('status', params.status);
+    if (params.sortBy) query.append('sort_by', params.sortBy);
+    if (params.sortOrder) query.append('sort_order', params.sortOrder);
+  }
+  const queryString = query.toString();
+  const url = `/api/customers/${queryString ? `?${queryString}` : ''}`;
+  return request<Customer[]>(url);
 }
 
 export async function fetchCustomerDetail(id: string) {
@@ -57,8 +74,9 @@ export interface BranchStatData {
   overdue_count: number;
 }
 
-export async function fetchBranchStats(): Promise<BranchStatData[]> {
-  return request<BranchStatData[]>('/api/stats/by-branch');
+export async function fetchBranchStats(branch?: string): Promise<BranchStatData[]> {
+  const url = branch ? `/api/stats/by-branch?branch=${encodeURIComponent(branch)}` : '/api/stats/by-branch';
+  return request<BranchStatData[]>(url);
 }
 
 // ─── Feedback ────────────────────────────────────────────────────────

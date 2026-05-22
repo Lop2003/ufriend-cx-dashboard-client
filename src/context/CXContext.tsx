@@ -32,9 +32,16 @@ interface CXContextType {
   setSelectedStatus: (status: string) => void;
   resetFilters: () => void;
 
+  // Sorting State
+  sortBy: string;
+  setSortBy: (sortBy: string) => void;
+  sortOrder: 'asc' | 'desc';
+  setSortOrder: (sortOrder: 'asc' | 'desc') => void;
+
   // Computed & Filtered Data
   filteredCustomers: Customer[];
   filteredFeedbacks: Feedback[];
+  branchStats: api.BranchStatData[];
   summaryStats: {
     totalCustomers: number;
     avgRating: string;
@@ -64,6 +71,7 @@ export function CXProvider({ children }: CXProviderProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [branchStats, setBranchStats] = useState<api.BranchStatData[]>([]);
 
   // Loading & Error State
   const [isLoading, setIsLoading] = useState(true);
@@ -75,84 +83,197 @@ export function CXProvider({ children }: CXProviderProps) {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
 
+  // Sorting State
+  const [sortBy, setSortBy] = useState<string>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
   // Reset Filters
   const resetFilters = () => {
     setSearchQuery('');
     setSelectedBranch('');
     setSelectedStatus('');
+    setSortBy('created_at');
+    setSortOrder('desc');
   };
 
   // ─── Fetch All Data from API (with fallback to mock) ───────────────
   const [apiSummary, setApiSummary] = useState<api.SummaryData | null>(null);
 
-  const loadData = useCallback(async () => {
+  // 1. Decoupled Dashboard Fetcher (Stats Summary + Stats by Branch + Feedbacks for charts)
+  const loadDashboardData = useCallback(async () => {
     setIsLoading(true);
     setApiError(null);
     try {
-      const [customersData, feedbacksData, summaryData] = await Promise.all([
-        api.fetchCustomers(),
-        api.fetchFeedbacks(),
+      const [summaryData, feedbacksData] = await Promise.all([
         api.fetchSummary(),
+        api.fetchFeedbacks(),
       ]);
-      setCustomers(customersData);
-      setFeedbacks(feedbacksData);
       setApiSummary(summaryData);
+      setFeedbacks(feedbacksData);
       setIsApiConnected(true);
-
-      // Set default selected customer if none selected
-      if (!selectedCustomerId && customersData.length > 0) {
-        setSelectedCustomerId(customersData[0].id);
-      }
     } catch (err) {
-      console.warn('API unavailable, falling back to mock data:', err);
-      setCustomers(initialCustomers);
+      console.warn('Dashboard API unavailable, falling back to mock stats:', err);
+
+      // Construct Mock Stats Summary
+      setApiSummary({
+        total_customers: initialCustomers.length,
+        avg_rating: initialFeedbacks.reduce((acc, f) => acc + f.rating, 0) / initialFeedbacks.length,
+        overdue_count: initialCustomers.filter(c => c.status === 'overdue').length,
+        active_count: initialCustomers.filter(c => c.status === 'active').length,
+        completed_count: initialCustomers.filter(c => c.status === 'completed').length,
+      });
       setFeedbacks(initialFeedbacks);
       setFollowUps(initialFollowUps);
-      setApiSummary(null);
       setIsApiConnected(false);
-      setApiError('ไม่สามารถเชื่อมต่อ API ได้ — กำลังใช้ข้อมูลตัวอย่าง (Mock Data)');
-
-      if (!selectedCustomerId) {
-        setSelectedCustomerId(initialCustomers[0].id);
-      }
+      setApiError('ไม่สามารถเชื่อมต่อ API สถิติได้ — กำลังใช้ข้อมูลตัวอย่าง (Mock Data)');
     } finally {
       setIsLoading(false);
     }
-  }, [selectedCustomerId]);
+  }, []);
 
-  // Load data on mount
+  // 1.5 Fetch Branch Stats dynamically
+  const fetchBranchStats = useCallback(async (branch?: string) => {
+    try {
+      const data = await api.fetchBranchStats(branch);
+      setBranchStats(data);
+    } catch (err) {
+      console.warn('Failed to fetch branch stats', err);
+      // Construct Mock Branch Stats on failure
+      const branchMap = new Map<string, { customer_count: number; avg_rating: number; overdue_count: number }>();
+      initialCustomers.forEach(c => {
+        if (branch && c.branch !== branch) return; // filter by branch in mock fallback
+        if (!branchMap.has(c.branch)) branchMap.set(c.branch, { customer_count: 0, avg_rating: 0, overdue_count: 0 });
+        const item = branchMap.get(c.branch)!;
+        item.customer_count++;
+        if (c.status === 'overdue') item.overdue_count++;
+      });
+      const fallbackStats = Array.from(branchMap.entries()).map(([br, item]) => {
+        const branchCustomerIds = new Set(initialCustomers.filter(c => c.branch === br).map(c => c.id));
+        const fbForBranch = initialFeedbacks.filter(f => branchCustomerIds.has(f.customer_id));
+        const avg = fbForBranch.length > 0 ? fbForBranch.reduce((a, f) => a + f.rating, 0) / fbForBranch.length : 0;
+        return { branch: br, ...item, avg_rating: parseFloat(avg.toFixed(1)) };
+      });
+      setBranchStats(fallbackStats);
+    }
+  }, []);
+
+  // Every time selectedBranch changes, we must refetch branchStats according to user instructions.
   useEffect(() => {
-    loadData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (selectedBranch !== undefined) {
+      fetchBranchStats(selectedBranch);
+    }
+  }, [selectedBranch, fetchBranchStats]);
 
-  // Filter customers based on search and selected branch/status
-  const filteredCustomers = useMemo(() => {
-    return customers.filter((c) => {
-      const matchesSearch =
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.phone.includes(searchQuery) ||
-        c.product.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesBranch = selectedBranch === '' || c.branch === selectedBranch;
-      const matchesStatus = selectedStatus === '' || c.status === selectedStatus;
+  // 2. Decoupled Customer List Fetcher (Customers listing + Feedbacks)
+  const loadCustomerListData = useCallback(async () => {
+    setIsLoading(true);
+    setApiError(null);
+    try {
+      const [customersData, feedbacksData] = await Promise.all([
+        api.fetchCustomers({
+          search: searchQuery,
+          branch: selectedBranch,
+          status: selectedStatus,
+          sortBy,
+          sortOrder,
+        }),
+        api.fetchFeedbacks(),
+      ]);
+      setCustomers(customersData);
+      setFeedbacks(feedbacksData);
+      setIsApiConnected(true);
+    } catch (err) {
+      console.warn('Customer API unavailable, falling back to mock data:', err);
 
-      return matchesSearch && matchesBranch && matchesStatus;
-    });
-  }, [customers, searchQuery, selectedBranch, selectedStatus]);
+      // Client-side filtering & sorting for Mock Data fallback
+      let localCustomers = [...initialCustomers];
+      if (searchQuery) {
+        localCustomers = localCustomers.filter(c =>
+          c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          c.phone.includes(searchQuery) ||
+          c.product.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+      if (selectedBranch) {
+        localCustomers = localCustomers.filter(c => c.branch === selectedBranch);
+      }
+      if (selectedStatus) {
+        localCustomers = localCustomers.filter(c => c.status === selectedStatus);
+      }
+      localCustomers.sort((a, b) => {
+        let valA: any = a[sortBy as keyof typeof a];
+        let valB: any = b[sortBy as keyof typeof b];
 
-  // Feedbacks associated with the filtered customers
-  const filteredFeedbacks = useMemo(() => {
-    const customerIds = new Set(filteredCustomers.map((c) => c.id));
-    return feedbacks.filter((fb) => customerIds.has(fb.customer_id));
-  }, [feedbacks, filteredCustomers]);
+        if (valA === undefined) valA = '';
+        if (valB === undefined) valB = '';
 
-  // Memoized stats — use API summary when no filters active, else compute client-side
-  const hasFilters = searchQuery !== '' || selectedBranch !== '' || selectedStatus !== '';
+        if (typeof valA === 'string') {
+          return sortOrder === 'asc'
+            ? valA.localeCompare(valB)
+            : valB.localeCompare(valA);
+        } else {
+          return sortOrder === 'asc'
+            ? (valA > valB ? 1 : -1)
+            : (valB > valA ? 1 : -1);
+        }
+      });
+
+      setCustomers(localCustomers);
+      setFeedbacks(initialFeedbacks);
+      setFollowUps(initialFollowUps);
+      setIsApiConnected(false);
+      setApiError('ไม่สามารถเชื่อมต่อ API รายชื่อลูกค้าได้ — กำลังใช้ข้อมูลตัวอย่าง (Mock Data)');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchQuery, selectedBranch, selectedStatus, sortBy, sortOrder]);
+
+  // Load dashboard stats on mount or when switching to 'dashboard' page
+  useEffect(() => {
+    if (currentPage === 'dashboard') {
+      loadDashboardData();
+    }
+  }, [currentPage, loadDashboardData]);
+
+  // Load customer table list when switching to 'customers' page or when active filters change
+  useEffect(() => {
+    if (currentPage === 'customers') {
+      loadCustomerListData();
+    }
+  }, [currentPage, loadCustomerListData]);
+
+  // Set default selected customer if none selected or if selected customer is no longer in the list
+  useEffect(() => {
+    if (customers.length > 0) {
+      if (!selectedCustomerId || !customers.some(c => c.id === selectedCustomerId)) {
+        setSelectedCustomerId(customers[0].id);
+      }
+    }
+  }, [customers, selectedCustomerId]);
+
+  // Compatibility aliases
+  const filteredCustomers = customers;
+  
+  const filteredFeedbacks = feedbacks;
 
   const summaryStats = useMemo(() => {
-    // If API summary available and no filters active, use server-computed stats
-    if (apiSummary && !hasFilters) {
-      const satisfactionRate = filteredFeedbacks.length > 0
-        ? ((filteredFeedbacks.filter(fb => fb.sentiment === 'positive').length / filteredFeedbacks.length) * 100).toFixed(0)
+    // If a branch is selected, aggregate from branchStats
+    if (selectedBranch && branchStats.length > 0) {
+      const bStat = branchStats.find(s => s.branch === selectedBranch);
+      if (bStat) {
+        return {
+          totalCustomers: bStat.customer_count,
+          avgRating: bStat.avg_rating.toFixed(1),
+          overdueCount: bStat.overdue_count,
+          satisfactionRate: ((bStat.avg_rating / 5) * 100).toFixed(0),
+        };
+      }
+    }
+
+    // If API summary available, use server-computed stats
+    if (apiSummary) {
+      const satisfactionRate = feedbacks.length > 0
+        ? ((feedbacks.filter(fb => fb.sentiment === 'positive').length / feedbacks.length) * 100).toFixed(0)
         : '0';
       return {
         totalCustomers: apiSummary.total_customers,
@@ -162,15 +283,15 @@ export function CXProvider({ children }: CXProviderProps) {
       };
     }
 
-    // Filtered mode: compute from client-side data
-    const totalCustomers = filteredCustomers.length;
-    const avgRating = filteredFeedbacks.length > 0 
-      ? (filteredFeedbacks.reduce((acc, fb) => acc + fb.rating, 0) / filteredFeedbacks.length).toFixed(1)
+    // Fallback/Mock mode: compute from static data
+    const totalCustomers = customers.length;
+    const avgRating = feedbacks.length > 0
+      ? (feedbacks.reduce((acc, fb) => acc + fb.rating, 0) / feedbacks.length).toFixed(1)
       : '0.0';
-    const overdueCount = filteredCustomers.filter(c => c.status === 'overdue').length;
-    const positiveFeedbacks = filteredFeedbacks.filter(fb => fb.sentiment === 'positive').length;
-    const satisfactionRate = filteredFeedbacks.length > 0
-      ? ((positiveFeedbacks / filteredFeedbacks.length) * 100).toFixed(0)
+    const overdueCount = customers.filter(c => c.status === 'overdue').length;
+    const positiveFeedbacks = feedbacks.filter(fb => fb.sentiment === 'positive').length;
+    const satisfactionRate = feedbacks.length > 0
+      ? ((positiveFeedbacks / feedbacks.length) * 100).toFixed(0)
       : '0';
 
     return {
@@ -179,7 +300,7 @@ export function CXProvider({ children }: CXProviderProps) {
       overdueCount,
       satisfactionRate,
     };
-  }, [apiSummary, hasFilters, filteredCustomers, filteredFeedbacks]);
+  }, [apiSummary, customers, feedbacks, selectedBranch, branchStats]);
 
   // Add Feedback Action — POST to API then refetch
   const addFeedback = async (newFb: Omit<Feedback, 'id' | 'sentiment' | 'created_at'>) => {
@@ -192,7 +313,7 @@ export function CXProvider({ children }: CXProviderProps) {
           category: newFb.category,
         });
         showToast('success', 'บันทึกคำติชมเรียบร้อยแล้ว ✨');
-        await loadData();
+        await Promise.all([loadDashboardData(), loadCustomerListData()]);
       } catch (err) {
         showToast('error', `บันทึกไม่สำเร็จ: ${err instanceof Error ? err.message : 'Unknown error'}`);
         return;
@@ -227,7 +348,7 @@ export function CXProvider({ children }: CXProviderProps) {
           note: newFu.note,
         });
         showToast('success', 'บันทึกการติดตามเรียบร้อยแล้ว 📞');
-        await loadData();
+        await Promise.all([loadDashboardData(), loadCustomerListData()]);
       } catch (err) {
         showToast('error', `บันทึกไม่สำเร็จ: ${err instanceof Error ? err.message : 'Unknown error'}`);
         return;
@@ -266,6 +387,7 @@ export function CXProvider({ children }: CXProviderProps) {
     customers,
     feedbacks,
     followUps,
+    branchStats,
     addFeedback,
     addFollowUp,
     searchQuery,
@@ -281,6 +403,10 @@ export function CXProvider({ children }: CXProviderProps) {
     isLoading,
     apiError,
     isApiConnected,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder,
   }), [
     currentPage,
     selectedCustomerId,
@@ -288,6 +414,7 @@ export function CXProvider({ children }: CXProviderProps) {
     customers,
     feedbacks,
     followUps,
+    branchStats,
     searchQuery,
     selectedBranch,
     selectedStatus,
@@ -297,6 +424,8 @@ export function CXProvider({ children }: CXProviderProps) {
     isLoading,
     apiError,
     isApiConnected,
+    sortBy,
+    sortOrder,
   ]);
 
   return (

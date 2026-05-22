@@ -1,76 +1,64 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import useCX from '../../../hooks/useCX';
-import { fetchBranchStats } from '../../../services/api';
 
 export default function DashboardChart() {
-  const { filteredCustomers, filteredFeedbacks, isApiConnected } = useCX();
-  const [activeTab, setActiveTab] = useState<'branch' | 'sentiment' | 'weekly'>('branch');
+  const { branchStats, feedbacks: filteredFeedbacks, selectedBranch, setSelectedBranch } = useCX();
   const [animate, setAnimate] = useState(false);
   const [pieProgress, setPieProgress] = useState(0);
   const rafRef = useRef<number>(0);
 
-  // Trigger animation resets whenever the active tab changes
+  // Trigger animations in parallel on mount
   useEffect(() => {
     setAnimate(false);
     setPieProgress(0);
 
-    // Cancel any in-flight rAF from a previous tab
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
     const timer = setTimeout(() => {
       setAnimate(true);
 
-      // Start rAF-driven pie animation
-      if (activeTab === 'sentiment') {
-        const duration = 1400; // 1.4 seconds (Perfect sweet spot)
-        const startTime = performance.now();
+      const duration = 1400; // 1.4 seconds
+      const startTime = performance.now();
 
-        const tick = (now: number) => {
-          const elapsed = now - startTime;
-          const linear = Math.min(elapsed / duration, 1);
-          // Ease-in-out curve
-          const eased = linear < 0.5
-            ? 2 * linear * linear
-            : 1 - Math.pow(-2 * linear + 2, 2) / 2;
-          setPieProgress(eased);
-          if (linear < 1) {
-            rafRef.current = requestAnimationFrame(tick);
-          }
-        };
-        rafRef.current = requestAnimationFrame(tick);
-      }
+      const tick = (now: number) => {
+        const elapsed = now - startTime;
+        const linear = Math.min(elapsed / duration, 1);
+        // Ease-in-out curve
+        const eased = linear < 0.5
+          ? 2 * linear * linear
+          : 1 - Math.pow(-2 * linear + 2, 2) / 2;
+        setPieProgress(eased);
+        if (linear < 1) {
+          rafRef.current = requestAnimationFrame(tick);
+        }
+      };
+      rafRef.current = requestAnimationFrame(tick);
     }, 120);
 
     return () => {
       clearTimeout(timer);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [activeTab]);
-
-  // --- Dynamic Branch Data (API-first, fallback to client) ---
-  const [apiBranchData, setApiBranchData] = useState<{ name: string; count: number }[] | null>(null);
-
-  useEffect(() => {
-    if (!isApiConnected) return;
-    fetchBranchStats()
-      .then((stats) => {
-        setApiBranchData(stats.map(s => ({ name: s.branch, count: s.customer_count })));
-      })
-      .catch(() => setApiBranchData(null));
-  }, [isApiConnected, filteredCustomers]);
+  }, []);
 
   const branchCounts = useMemo(() => {
-    if (apiBranchData) return apiBranchData;
-    // Fallback: compute from client-side data
-    const branchMap = new Map<string, number>();
-    filteredCustomers.forEach(c => branchMap.set(c.branch, (branchMap.get(c.branch) || 0) + 1));
-    return Array.from(branchMap.entries()).map(([name, count]) => ({ name, count }));
-  }, [apiBranchData, filteredCustomers]);
+    const topStats = [...branchStats].sort((a, b) => b.customer_count - a.customer_count).slice(0, 5);
+    return topStats.map(stat => {
+      const isFilteredOut = selectedBranch ? stat.branch !== selectedBranch : false;
+      return { 
+        name: stat.branch, 
+        count: stat.customer_count,
+        isFilteredOut
+      };
+    });
+  }, [branchStats, selectedBranch]);
 
   const maxCount = useMemo(() => {
-    const counts = branchCounts.map(b => b.count);
+    // Use unfiltered max count to maintain stable heights during filter transition
+    const topStats = [...branchStats].sort((a, b) => b.customer_count - a.customer_count).slice(0, 5);
+    const counts = topStats.map(b => b.customer_count);
     return Math.max(...counts, 1);
-  }, [branchCounts]);
+  }, [branchStats]);
 
   // --- Dynamic Sentiment Data ---
   const sentimentStats = useMemo(() => {
@@ -78,7 +66,7 @@ export default function DashboardChart() {
     const positive = filteredFeedbacks.filter(fb => fb.sentiment === 'positive').length;
     const neutral = filteredFeedbacks.filter(fb => fb.sentiment === 'neutral').length;
     const negative = filteredFeedbacks.filter(fb => fb.sentiment === 'negative').length;
-    
+
     return {
       total,
       positive,
@@ -111,7 +99,7 @@ export default function DashboardChart() {
     const minTime = new Date(sorted[0].created_at).getTime();
     const maxTimeOriginal = new Date(sorted[sorted.length - 1].created_at).getTime();
     // Pad interval if min/max are identical (single feedback or same instant)
-    const maxTime = minTime === maxTimeOriginal 
+    const maxTime = minTime === maxTimeOriginal
       ? minTime + 1000 * 60 * 60 * 24 * 28 // 4 weeks
       : maxTimeOriginal;
 
@@ -135,7 +123,7 @@ export default function DashboardChart() {
         avg = periodFeedbacks.reduce((acc, f) => acc + f.rating, 0) / periodFeedbacks.length;
         lastAvg = avg; // Cache last valid score
       }
-      
+
       trends.push({
         week: `สัปดาห์ ${i + 1}`,
         score: parseFloat(avg.toFixed(1))
@@ -146,8 +134,6 @@ export default function DashboardChart() {
   }, [filteredFeedbacks]);
 
   // Generate SVG coordinates dynamically for the Line Chart (viewBox="0 0 400 120")
-  // X values: index 0 -> 50, 1 -> 150, 2 -> 250, 3 -> 350
-  // Y values: Score 5.0 -> Y:20, Score 1.0 -> Y:100
   const lineCoords = useMemo(() => {
     const xCoords = [50, 150, 250, 350];
     return weeklyTrends.map((t, idx) => {
@@ -179,226 +165,233 @@ export default function DashboardChart() {
   }, [lineCoords]);
 
   return (
-    <div className="bg-white p-6 rounded-3xl border border-white/60 shadow-[6px_6px_15px_rgba(163,177,198,0.35),-6px_-6px_15px_rgba(255,255,255,0.8)] mb-6 font-body text-slate-800">
-      {/* Header and navigation tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 pb-6 border-b border-gray-100 gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-body text-slate-800">
+
+      {/* 📊 1. จำแนกตามสาขา (Bar Chart Box) */}
+      <div className="bg-white p-6 rounded-3xl border border-white/60 shadow-[6px_6px_15px_rgba(163,177,198,0.35),-6px_-6px_15px_rgba(255,255,255,0.8)] flex flex-col justify-between min-h-[420px]">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+          <div className="w-8 h-8 rounded-lg bg-blue-50 text-primary flex items-center justify-center shrink-0">
+            <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-900 tracking-wide font-display">รายงานการวิเคราะห์และกราฟสถิติ</h3>
-            <p className="text-[11px] text-gray-400">ประมวลผลข้อมูลความพึงพอใจและสถิติสัญญาจำแนกแต่ละสาขา</p>
+            <h3 className="text-xs font-black text-gray-900 tracking-wide font-display uppercase">ลูกค้าจำแนกรายสาขา</h3>
+            <p className="text-[10px] text-gray-400">ประมวลจำนวนสัญญาแยกแต่ละพื้นที่สาขา</p>
           </div>
         </div>
-        <div className="flex bg-gray-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto scrollbar-none self-stretch sm:self-start gap-1">
-          <button
-            onClick={() => setActiveTab('branch')}
-            className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-3 py-1.5 rounded text-[11px] font-bold tracking-wide transition-all ${
-              activeTab === 'branch'
-                ? 'bg-white text-primary shadow-sm'
-                : 'text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            จำแนกตามสาขา
-          </button>
-          <button
-            onClick={() => setActiveTab('sentiment')}
-            className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-3 py-1.5 rounded text-[11px] font-bold tracking-wide transition-all ${
-              activeTab === 'sentiment'
-                ? 'bg-white text-primary shadow-sm'
-                : 'text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            สัดส่วน Sentiment
-          </button>
-          <button
-            onClick={() => setActiveTab('weekly')}
-            className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-3 py-1.5 rounded text-[11px] font-bold tracking-wide transition-all ${
-              activeTab === 'weekly'
-                ? 'bg-white text-primary shadow-sm'
-                : 'text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            แนวโน้ม CSAT
-          </button>
-        </div>
-      </div>
 
-      {/* Chart Canvas Area */}
-      <div className="h-56 flex items-center justify-center relative">
-        {/* 📊 BAR CHART: Customers per branch */}
-        {activeTab === 'branch' && (
-          <div className="w-full h-full flex flex-col justify-end px-4">
-            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8 pt-4">
-              <div className="border-b border-gray-100 w-full h-0"></div>
-              <div className="border-b border-gray-100 w-full h-0"></div>
-              <div className="border-b border-gray-200 w-full h-0"></div>
-            </div>
-
-            <div className="flex items-end justify-between h-40 relative z-10 w-full px-8">
-              {branchCounts.map((b, i) => {
-                const heightPct = animate ? (b.count / maxCount) * 100 : 0;
-                return (
-                  <div key={i} className="flex flex-col items-center h-full group w-1/5 max-w-[90px] justify-end">
-                    <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 bg-gray-950 text-white text-[10px] py-1 px-2.5 rounded transition-opacity duration-200 pointer-events-none shadow z-20 whitespace-nowrap">
-                      สาขา {b.name}: {b.count} ราย
-                    </div>
-                    <div 
-                      className="w-full bg-primary rounded-t transition-all duration-[1300ms] cubic-bezier(0.16,1,0.3,1) hover:bg-primary-dark shadow-sm"
-                      style={{ height: `${Math.max(heightPct, 8)}%` }}
-                    ></div>
-                    <span className="text-[10px] text-gray-500 font-semibold mt-2 text-center truncate w-full">
-                      {b.name}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+        {/* Content Chart */}
+        <div className="h-64 flex items-end justify-center relative w-full px-2">
+          <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6 pt-2">
+            <div className="border-b border-gray-100 w-full h-0"></div>
+            <div className="border-b border-gray-100 w-full h-0"></div>
+            <div className="border-b border-gray-200 w-full h-0"></div>
           </div>
-        )}
 
-        {/* 🍕 PIE CHART: Sentiment Analysis */}
-        {activeTab === 'sentiment' && (
-          <div className="w-full h-full flex flex-col sm:flex-row items-center justify-center gap-12 px-8">
-            <div className="relative w-36 h-36">
-              <svg className="w-full h-full" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#f3f4f6" strokeWidth="4.2" />
-                {/* Positive */}
-                <circle 
-                  cx="18" cy="18" r="15.915" fill="none" stroke="#057A55" strokeWidth="4.2"
-                  strokeDasharray={`${sentimentStats.pct.positive * pieProgress} ${100 - sentimentStats.pct.positive * pieProgress}`}
-                  strokeDashoffset="25"
-                />
-                {/* Neutral */}
-                <circle 
-                  cx="18" cy="18" r="15.915" fill="none" stroke="#92400E" strokeWidth="4.2"
-                  strokeDasharray={`${sentimentStats.pct.neutral * pieProgress} ${100 - sentimentStats.pct.neutral * pieProgress}`}
-                  strokeDashoffset={25 - sentimentStats.pct.positive * pieProgress}
-                />
-                {/* Negative */}
-                <circle 
-                  cx="18" cy="18" r="15.915" fill="none" stroke="#C81E1E" strokeWidth="4.2"
-                  strokeDasharray={`${sentimentStats.pct.negative * pieProgress} ${100 - sentimentStats.pct.negative * pieProgress}`}
-                  strokeDashoffset={25 - sentimentStats.pct.positive * pieProgress - sentimentStats.pct.neutral * pieProgress}
-                />
-              </svg>
-              <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-700 ${pieProgress > 0.3 ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}`}>
-                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">เชิงบวก</span>
-                <span className="text-md font-black text-gray-900">{Math.round(sentimentStats.pct.positive * pieProgress)}%</span>
-              </div>
-            </div>
-
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-sentiment-positive"></span>
-                <div>
-                  <p className="text-[11px] font-bold text-gray-800">พอใจ (Positive)</p>
-                  <p className="text-[10px] text-gray-500 font-medium">{sentimentStats.positive} รายการ ({sentimentStats.pct.positive}%)</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-sentiment-neutral"></span>
-                <div>
-                  <p className="text-[11px] font-bold text-gray-800">เฉยๆ (Neutral)</p>
-                  <p className="text-[10px] text-gray-500 font-medium">{sentimentStats.neutral} รายการ ({sentimentStats.pct.neutral}%)</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-sentiment-negative"></span>
-                <div>
-                  <p className="text-[11px] font-bold text-gray-800">ไม่พอใจ (Negative)</p>
-                  <p className="text-[10px] text-gray-500 font-medium">{sentimentStats.negative} รายการ ({sentimentStats.pct.negative}%)</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 📈 LINE CHART: Weekly CSAT Score Trend */}
-        {activeTab === 'weekly' && (
-          <div className="w-full h-full flex flex-col justify-end px-4 animate-fade-in-up">
-            <div className="w-full h-36 relative">
-              <svg className="w-full h-full" viewBox="0 0 400 120" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#0051BA" stopOpacity="0.2" />
-                    <stop offset="100%" stopColor="#0051BA" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-                {/* Dynamic fill gradient path */}
-                {animate && svgPaths.fill && (
-                  <path 
-                    d={svgPaths.fill} 
-                    fill="url(#chartGrad)" 
-                    className="animate-fill-fade"
-                  />
-                )}
-                {/* Dynamic draw stroke path */}
-                {svgPaths.line && (
-                  <path 
-                    d={svgPaths.line} 
-                    fill="none" 
-                    stroke="#0051BA" 
-                    strokeWidth="3" 
-                    strokeLinecap="round"
-                    className={animate ? 'animate-line-draw' : 'opacity-0'}
-                  />
-                )}
-                
-                {/* Points growing inside circles */}
-                {animate && lineCoords.map((pt, idx) => (
-                  <circle 
-                    key={idx}
-                    cx={pt.x} 
-                    cy={pt.y} 
-                    r={idx === 3 ? 5 : 4} 
-                    fill="#0051BA" 
-                    stroke="white" 
-                    strokeWidth="1.5" 
-                    className={`transition-all duration-300 transform scale-100 ease-out`}
-                    style={{ transitionDelay: `${idx * 150}ms` }}
-                  />
-                ))}
-              </svg>
-
-              {/* Dynamic weekly data popups */}
-              {lineCoords.map((pt, idx) => (
+          <div className="flex items-end justify-between h-52 relative z-10 w-full px-2">
+            {branchCounts.map((b, i) => {
+              const heightPct = animate ? (b.count / maxCount) * 100 : 0;
+              const isSelected = selectedBranch === b.name;
+              return (
                 <div 
-                  key={idx}
-                  className={`absolute -translate-x-1/2 -translate-y-6 bg-slate-900 text-white text-[9px] px-1.5 py-0.5 rounded-lg font-bold transition-all duration-500 shadow-md ${
-                    animate ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
+                  key={i} 
+                  className={`flex flex-col items-center h-full group w-[18%] justify-end transition-all duration-[1000ms] ease-out ${
+                    b.isFilteredOut ? 'opacity-0 scale-y-75 pointer-events-none' : 'opacity-100 scale-y-100'
                   }`}
-                  style={{
-                    left: `${(pt.x / 400) * 100}%`,
-                    top: `${(pt.y / 120) * 100}%`,
-                    transitionDelay: `${idx * 100}ms`
-                  }}
+                  style={{ transformOrigin: 'bottom' }}
                 >
-                  สัปดาห์ {idx + 1}: {pt.score.toFixed(1)} ★
-                </div>
-              ))}
-            </div>
-
-            <div className={`relative h-6 mt-2 border-t border-gray-100 pt-2 transition-opacity duration-700 ${animate ? 'opacity-100' : 'opacity-0'}`}>
-              {weeklyTrends.map((t, idx) => {
-                const pct = (lineCoords[idx].x / 400) * 100;
-                return (
-                  <span 
-                    key={idx} 
-                    className="absolute -translate-x-1/2 text-[9px] sm:text-[10px] text-gray-500 font-bold whitespace-nowrap"
-                    style={{ left: `${pct}%` }}
-                  >
-                    {t.week} ({t.score.toFixed(1)} ★)
+                  <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 bg-gray-950 text-white text-[9px] py-1 px-2 rounded transition-opacity duration-200 pointer-events-none shadow z-20 whitespace-nowrap">
+                    สาขา {b.name}: {b.count} ราย
+                  </div>
+                  <div
+                    className={`w-full rounded-t transition-all duration-[1300ms] cubic-bezier(0.16,1,0.3,1) shadow-sm cursor-pointer ${
+                      isSelected 
+                        ? 'bg-primary-dark ring-2 ring-primary ring-offset-2 scale-x-[1.05]' 
+                        : 'bg-primary hover:bg-primary-dark'
+                    }`}
+                    style={{ height: `${b.isFilteredOut ? 0 : Math.max(heightPct, 8)}%` }}
+                    onClick={() => setSelectedBranch(isSelected ? '' : b.name)}
+                  ></div>
+                  <span className={`text-[9px] font-semibold mt-2 text-center truncate w-full transition-all duration-[800ms] ${
+                    isSelected ? 'text-primary-dark font-black' : 'text-gray-500'
+                  }`}>
+                    {b.name}
                   </span>
-                );
-              })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* 🍕 2. สัดส่วน Sentiment (Pie Chart Box) */}
+      <div className="bg-white p-6 rounded-3xl border border-white/60 shadow-[6px_6px_15px_rgba(163,177,198,0.35),-6px_-6px_15px_rgba(255,255,255,0.8)] flex flex-col justify-between min-h-[420px]">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-xs font-black text-gray-900 tracking-wide font-display uppercase">สัดส่วน Sentiment</h3>
+            <p className="text-[10px] text-gray-400">วิเคราะห์อารมณ์รวมของคำประเมินติชม</p>
+          </div>
+        </div>
+
+        {/* Content Chart */}
+        <div className="h-64 flex flex-col sm:flex-row items-center justify-center gap-6 px-2">
+          <div className="relative w-36 h-36 shrink-0">
+            <svg className="w-full h-full" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="15.915" fill="none" stroke="#f3f4f6" strokeWidth="4.2" />
+              {/* Positive */}
+              <circle
+                cx="18" cy="18" r="15.915" fill="none" stroke="#057A55" strokeWidth="4.2"
+                strokeDasharray={`${sentimentStats.pct.positive * pieProgress} ${100 - sentimentStats.pct.positive * pieProgress}`}
+                strokeDashoffset="25"
+              />
+              {/* Neutral */}
+              <circle
+                cx="18" cy="18" r="15.915" fill="none" stroke="#92400E" strokeWidth="4.2"
+                strokeDasharray={`${sentimentStats.pct.neutral * pieProgress} ${100 - sentimentStats.pct.neutral * pieProgress}`}
+                strokeDashoffset={25 - sentimentStats.pct.positive * pieProgress}
+              />
+              {/* Negative */}
+              <circle
+                cx="18" cy="18" r="15.915" fill="none" stroke="#C81E1E" strokeWidth="4.2"
+                strokeDasharray={`${sentimentStats.pct.negative * pieProgress} ${100 - sentimentStats.pct.negative * pieProgress}`}
+                strokeDashoffset={25 - sentimentStats.pct.positive * pieProgress - sentimentStats.pct.neutral * pieProgress}
+              />
+            </svg>
+            <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-700 ${pieProgress > 0.3 ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}`}>
+              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">เชิงบวก</span>
+              <span className="text-base font-black text-gray-900">{Math.round(sentimentStats.pct.positive * pieProgress)}%</span>
             </div>
           </div>
-        )}
+
+          <div className="space-y-2.5 w-full">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-sentiment-positive shrink-0"></span>
+              <div className="flex justify-between w-full text-xs">
+                <span className="font-bold text-gray-700">พอใจ (Positive)</span>
+                <span className="text-gray-500 font-bold">{sentimentStats.pct.positive}%</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-sentiment-neutral shrink-0"></span>
+              <div className="flex justify-between w-full text-xs">
+                <span className="font-bold text-gray-700">เฉยๆ (Neutral)</span>
+                <span className="text-gray-500 font-bold">{sentimentStats.pct.neutral}%</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-sentiment-negative shrink-0"></span>
+              <div className="flex justify-between w-full text-xs">
+                <span className="font-bold text-gray-700">ไม่พอใจ (Negative)</span>
+                <span className="text-gray-500 font-bold">{sentimentStats.pct.negative}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* 📈 3. แนวโน้ม CSAT (Line Chart Box) */}
+      <div className="bg-white p-6 rounded-3xl border border-white/60 shadow-[6px_6px_15px_rgba(163,177,198,0.35),-6px_-6px_15px_rgba(255,255,255,0.8)] flex flex-col justify-between min-h-[420px]">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+          <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 12l3-3 3 3 4-4M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-xs font-black text-gray-900 tracking-wider font-display uppercase">แนวโน้มคะแนน CSAT</h3>
+            <p className="text-[10px] text-gray-400">ประวัติค่าเฉลี่ยสถิติคะแนนความพอใจรายสัปดาห์</p>
+          </div>
+        </div>
+
+        {/* Content Chart */}
+        <div className="h-64 flex flex-col justify-end w-full px-2">
+          <div className="w-full h-44 relative">
+            <svg className="w-full h-full" viewBox="0 0 400 120" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#0051BA" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#0051BA" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              {/* Dynamic fill gradient path */}
+              {animate && svgPaths.fill && (
+                <path
+                  d={svgPaths.fill}
+                  fill="url(#chartGrad)"
+                  className="animate-fill-fade"
+                />
+              )}
+              {/* Dynamic draw stroke path */}
+              {svgPaths.line && (
+                <path
+                  d={svgPaths.line}
+                  fill="none"
+                  stroke="#0051BA"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  className={animate ? 'animate-line-draw' : 'opacity-0'}
+                />
+              )}
+
+              {/* Points growing inside circles */}
+              {animate && lineCoords.map((pt, idx) => (
+                <circle
+                  key={idx}
+                  cx={pt.x}
+                  cy={pt.y}
+                  r={idx === 3 ? 5 : 4}
+                  fill="#0051BA"
+                  stroke="white"
+                  strokeWidth="1.5"
+                  className={`transition-all duration-300 transform scale-100 ease-out`}
+                  style={{ transitionDelay: `${idx * 150}ms` }}
+                />
+              ))}
+            </svg>
+
+            {/* Dynamic weekly data popups */}
+            {lineCoords.map((pt, idx) => (
+              <div
+                key={idx}
+                className={`absolute -translate-x-1/2 -translate-y-6 bg-slate-900 text-white text-[8px] px-1 py-0.5 rounded font-bold transition-all duration-500 shadow-md ${animate ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
+                  }`}
+                style={{
+                  left: `${(pt.x / 400) * 100}%`,
+                  top: `${(pt.y / 120) * 100}%`,
+                  transitionDelay: `${idx * 100}ms`
+                }}
+              >
+                {pt.score.toFixed(1)} ★
+              </div>
+            ))}
+          </div>
+
+          <div className={`relative h-6 mt-2 border-t border-gray-100 pt-2 transition-opacity duration-700 ${animate ? 'opacity-100' : 'opacity-0'}`}>
+            {weeklyTrends.map((_, idx) => {
+              const pct = (lineCoords[idx].x / 400) * 100;
+              return (
+                <span
+                  key={idx}
+                  className="absolute -translate-x-1/2 text-[8px] text-gray-500 font-bold whitespace-nowrap"
+                  style={{ left: `${pct}%` }}
+                >
+                  สัปดาห์ {idx + 1}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }
