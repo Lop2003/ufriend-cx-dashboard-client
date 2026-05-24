@@ -17,7 +17,8 @@ interface APIResponse<T> {
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
+  const baseURL = 'http://localhost:3000';
+  const res = await fetch(`${baseURL}${url}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
