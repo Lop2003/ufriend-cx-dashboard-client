@@ -1,14 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useCX from '../../../hooks/useCX';
 import SearchableCustomerDropdown from '../../../components/SearchableCustomerDropdown';
 
 export default function FeedbackForm() {
-  const { customers, addFeedback, setCurrentPage } = useCX();
-  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const { selectedCustomerId: globalSelectedCustomerId, customers, addFeedback, setCurrentPage } = useCX();
+  const [selectedCustomerId, setSelectedCustomerId] = useState(globalSelectedCustomerId || '');
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [category, setCategory] = useState<'service' | 'payment' | 'product' | 'branch'>('service');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (globalSelectedCustomerId) {
+      setSelectedCustomerId(globalSelectedCustomerId);
+    }
+  }, [globalSelectedCustomerId]);
 
 
   const handleCancel = () => {

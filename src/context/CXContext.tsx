@@ -275,7 +275,7 @@ export function CXProvider({ children }: CXProviderProps) {
         comment: newFb.comment,
         category: newFb.category,
       });
-      showToast('success', 'บันทึกคำติชมเรียบร้อยแล้ว ✨');
+      showToast('success', 'บันทึกคำติชมเรียบร้อยแล้ว');
       setIsDetailModalOpen(true);
       return true;
     } catch (err) {
@@ -293,7 +293,7 @@ export function CXProvider({ children }: CXProviderProps) {
         type: newFu.type,
         note: newFu.note,
       });
-      showToast('success', 'บันทึกการติดตามเรียบร้อยแล้ว 📞');
+      showToast('success', 'บันทึกการติดตามเรียบร้อยแล้ว');
       setIsDetailModalOpen(true);
       return true;
     } catch (err) {

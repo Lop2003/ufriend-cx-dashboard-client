@@ -13,6 +13,11 @@ export default function CustomerDetailModal() {
     setCurrentPage('add-followup');
   };
 
+  const handleAddFeedback = () => {
+    setIsDetailModalOpen(false);
+    setCurrentPage('add-feedback');
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300">
       {/* Backdrop click close */}
@@ -46,6 +51,7 @@ export default function CustomerDetailModal() {
           <CustomerDetailPage
             onBack={handleClose}
             onAddFollowUp={handleAddFollowUp}
+            onAddFeedback={handleAddFeedback}
           />
         </div>
       </div>

@@ -8,6 +8,7 @@ import type { Feedback, FollowUp } from '../../../types';
 interface CustomerDetailPageProps {
   onBack?: () => void;
   onAddFollowUp?: () => void;
+  onAddFeedback?: () => void;
 }
 
 // Mappers for translating data values to beautiful Thai labels
@@ -47,6 +48,7 @@ const RatingStar = ({ rating }: { rating: number }) => (
 export default function CustomerDetailPage({
   onBack,
   onAddFollowUp,
+  onAddFeedback,
 }: CustomerDetailPageProps) {
   const { 
     selectedCustomerId, 
@@ -109,6 +111,15 @@ export default function CustomerDetailPage({
     }
   };
 
+  const handleAddFeedback = () => {
+    if (onAddFeedback) {
+      onAddFeedback();
+    } else {
+      setIsDetailModalOpen(false);
+      setCurrentPage('add-feedback');
+    }
+  };
+
   if (!customer) {
     return (
       <div className="space-y-4 font-body text-slate-800">
@@ -147,15 +158,27 @@ export default function CustomerDetailPage({
           ย้อนกลับแดชบอร์ดหลัก
         </button>
 
-        <button
-          onClick={handleAddFollowUp}
-          className="bg-primary hover:bg-primary-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 hover-shimmer w-full sm:w-auto justify-center"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-          บันทึกการติดตามลูกค้า
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
+          <button
+            onClick={handleAddFeedback}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 hover-shimmer w-full sm:w-auto justify-center cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            บันทึกคำติชมลูกค้า
+          </button>
+
+          <button
+            onClick={handleAddFollowUp}
+            className="bg-primary hover:bg-primary-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 hover-shimmer w-full sm:w-auto justify-center cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            บันทึกการติดตามลูกค้า
+          </button>
+        </div>
       </div>
 
       {/* 📋 Customer Information card */}
@@ -270,7 +293,7 @@ export default function CustomerDetailPage({
                               onClick={async () => {
                                 try {
                                   await updateFollowUpStatus(fu.id, 'done');
-                                  showToast('success', 'อัพเดทสถานะเรียบร้อยแล้ว ✅');
+                                  showToast('success', 'อัพเดทสถานะเรียบร้อยแล้ว');
                                   // Refetch detail to update UI
                                   const updated = await fetchCustomerDetail(selectedCustomerId);
                                   setApiDetail({ feedbacks: updated.feedbacks || [], follow_ups: updated.follow_ups || [] });

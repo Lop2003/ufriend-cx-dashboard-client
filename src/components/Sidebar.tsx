@@ -14,7 +14,7 @@ export default function Sidebar({
   isMobileOpen = false,
   onCloseMobile,
 }: SidebarProps) {
-  const { currentPage, setCurrentPage, customers, selectedCustomerId, setSelectedCustomerId } = useCX();
+  const { currentPage, setCurrentPage, setSelectedCustomerId } = useCX();
 
   return (
     <aside
@@ -145,7 +145,10 @@ export default function Sidebar({
 
           {/* บันทึกคำติชม */}
           <button
-            onClick={() => setCurrentPage('add-feedback')}
+            onClick={() => {
+              setSelectedCustomerId('');
+              setCurrentPage('add-feedback');
+            }}
             title="บันทึกคำติชม"
             className={`flex items-center rounded-xl text-xs font-semibold tracking-wide transition-all duration-300 border-l-4 ${
               isCollapsed ? 'w-10 h-10 justify-center p-0 border-l-0' : 'w-full gap-3 px-4 py-2.5'
@@ -172,9 +175,7 @@ export default function Sidebar({
           {/* บันทึกการติดตาม */}
           <button
             onClick={() => {
-              if (!selectedCustomerId && customers.length > 0) {
-                setSelectedCustomerId(customers[0].id);
-              }
+              setSelectedCustomerId('');
               setCurrentPage('add-followup');
             }}
             title="บันทึกการติดตาม"
