@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCX } from '../../../hooks/useCX';
 import SummaryCards from '../components/SummaryCards';
 import DashboardChart from '../components/DashboardChart';
@@ -39,6 +39,15 @@ export default function DashboardPage() {
   const [branches, setBranches] = useState<string[]>([]);
   const [isFetchingBranches, setIsFetchingBranches] = useState(false);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedBranch, selectedStatus]);
+
   // Fetch branches on demand when the user interacts with the filter
   const handleFocusBranches = async () => {
     if (branches.length > 0 || isFetchingBranches) return;
@@ -71,6 +80,13 @@ export default function DashboardPage() {
       ? <span className="text-primary ml-1">▲</span>
       : <span className="text-primary ml-1">▼</span>;
   };
+
+  // Pagination calculations
+  const totalItems = customers.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const paginatedCustomers = customers.slice(startIndex, endIndex);
 
   return (
     <div className="font-body text-slate-800 antialiased space-y-6">
@@ -233,14 +249,14 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100 text-[10px] sm:text-[11px] font-semibold text-gray-700">
-                  {customers.length === 0 ? (
+                  {paginatedCustomers.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="px-3 sm:px-4 md:px-5 py-10 text-center text-gray-400">
                         ไม่พบรายชื่อบัญชีลูกค้าในเงื่อนไขการกรอง
                       </td>
                     </tr>
                   ) : (
-                    customers.map((c) => {
+                    paginatedCustomers.map((c) => {
                       const isOverdue = c.status === 'overdue';
                       const s = STATUS_MAP[c.status] ?? STATUS_MAP.completed;
                       return (
@@ -285,6 +301,104 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Premium Pagination Footer */}
+            {totalItems > 0 && (
+              <div className="bg-slate-50/75 border-t border-gray-100 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Left side: range display and page size selector */}
+                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 font-semibold">
+                  <span>
+                    แสดง <span className="text-gray-900 font-bold">{startIndex + 1}-{endIndex}</span> จากทั้งหมด <span className="text-primary font-bold">{totalItems}</span> รายการ
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-400 uppercase font-extrabold tracking-wider">แสดงหน้าละ:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setPage(1);
+                      }}
+                      className="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary font-bold cursor-pointer hover:border-gray-300 transition-colors"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Right side: Page Navigation controls */}
+                <div className="flex items-center gap-1.5 font-sans">
+                  {/* First Page */}
+                  <button
+                    onClick={() => setPage(1)}
+                    disabled={page === 1}
+                    className="w-8 h-8 rounded-lg border border-gray-200 bg-white text-gray-500 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed hover:text-primary transition-all text-xs font-bold"
+                    title="หน้าแรก"
+                  >
+                    «
+                  </button>
+
+                  {/* Prev Page */}
+                  <button
+                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={page === 1}
+                    className="w-8 h-8 rounded-lg border border-gray-200 bg-white text-gray-500 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed hover:text-primary transition-all text-xs font-bold"
+                    title="หน้าก่อนหน้า"
+                  >
+                    ‹
+                  </button>
+
+                  {/* Page Numbers */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => {
+                      if (totalPages <= 5) return true;
+                      return Math.abs(p - page) <= 1 || p === 1 || p === totalPages;
+                    })
+                    .map((p, idx, arr) => {
+                      const isCurrent = p === page;
+                      const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
+
+                      return (
+                        <div key={p} className="flex items-center gap-1.5">
+                          {showEllipsis && <span className="text-gray-400 px-1 font-bold text-xs select-none">...</span>}
+                          <button
+                            onClick={() => setPage(p)}
+                            className={`w-8 h-8 rounded-lg text-xs font-bold flex items-center justify-center transition-all ${
+                              isCurrent
+                                ? 'bg-primary text-white shadow-sm ring-1 ring-primary'
+                                : 'border border-gray-200 bg-white text-gray-600 hover:bg-slate-50 hover:text-primary'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                  {/* Next Page */}
+                  <button
+                    onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={page === totalPages}
+                    className="w-8 h-8 rounded-lg border border-gray-200 bg-white text-gray-500 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed hover:text-primary transition-all text-xs font-bold"
+                    title="หน้าถัดไป"
+                  >
+                    ›
+                  </button>
+
+                  {/* Last Page */}
+                  <button
+                    onClick={() => setPage(totalPages)}
+                    disabled={page === totalPages}
+                    className="w-8 h-8 rounded-lg border border-gray-200 bg-white text-gray-500 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed hover:text-primary transition-all text-xs font-bold"
+                    title="หน้าสุดท้าย"
+                  >
+                    »
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         
