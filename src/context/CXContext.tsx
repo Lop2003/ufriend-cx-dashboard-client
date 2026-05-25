@@ -105,14 +105,12 @@ export function CXProvider({ children }: CXProviderProps) {
     setIsLoading(true);
     setApiError(null);
     try {
-      const [summaryData, feedbacksData, customersData] = await Promise.all([
+      const [summaryData, feedbacksData] = await Promise.all([
         api.fetchSummary(),
         api.fetchFeedbacks(),
-        api.fetchCustomers(), // Fetch all customers to map customer_id -> branch dynamically
       ]);
       setApiSummary(summaryData);
       setFeedbacks(feedbacksData);
-      setAllCustomers(customersData || []);
       setIsApiConnected(true);
     } catch (err) {
       console.error('Dashboard API unavailable:', err);
@@ -149,14 +147,25 @@ export function CXProvider({ children }: CXProviderProps) {
     setApiError(null);
     try {
       const isFormPage = currentPage === 'add-feedback' || currentPage === 'add-followup';
+      const searchVal = isFormPage ? '' : searchQuery;
+      const branchVal = isFormPage ? '' : selectedBranch;
+      const statusVal = isFormPage ? '' : selectedStatus;
+
       const customersData = await api.fetchCustomers({
-        search: isFormPage ? '' : searchQuery,
-        branch: isFormPage ? '' : selectedBranch,
-        status: isFormPage ? '' : selectedStatus,
+        search: searchVal,
+        branch: branchVal,
+        status: statusVal,
         sortBy: isFormPage ? 'name' : sortBy,
         sortOrder: isFormPage ? 'asc' : sortOrder,
       });
+
       setCustomers(customersData || []);
+
+      // If this fetch represents an unfiltered state, populate allCustomers cache for chart mappings
+      if (!searchVal && !branchVal && !statusVal) {
+        setAllCustomers(customersData || []);
+      }
+
       setIsApiConnected(true);
       hasLoadedCustomersRef.current = true;
     } catch (err) {
