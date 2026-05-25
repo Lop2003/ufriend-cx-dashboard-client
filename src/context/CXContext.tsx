@@ -1,4 +1,4 @@
-import { createContext, useState, useMemo, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useState, useMemo, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { Customer, Feedback, FollowUp } from '../types';
 import * as api from '../services/api';
 import { showToast } from '../components/Toast';
@@ -74,6 +74,7 @@ export function CXProvider({ children }: CXProviderProps) {
 
   // Loading & Error State
   const [isLoading, setIsLoading] = useState(true);
+  const hasLoadedCustomersRef = useRef(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isApiConnected, setIsApiConnected] = useState(false);
 
@@ -103,12 +104,14 @@ export function CXProvider({ children }: CXProviderProps) {
     setIsLoading(true);
     setApiError(null);
     try {
-      const [summaryData, feedbacksData] = await Promise.all([
+      const [summaryData, feedbacksData, customersData] = await Promise.all([
         api.fetchSummary(),
         api.fetchFeedbacks(),
+        api.fetchCustomers(), // Fetch all customers to map customer_id -> branch dynamically
       ]);
       setApiSummary(summaryData);
       setFeedbacks(feedbacksData);
+      setCustomers(customersData || []);
       setIsApiConnected(true);
     } catch (err) {
       console.error('Dashboard API unavailable:', err);
@@ -139,18 +142,22 @@ export function CXProvider({ children }: CXProviderProps) {
 
   // 2. Decoupled Customer List Fetcher (Customers listing only)
   const loadCustomerListData = useCallback(async () => {
-    setIsLoading(true);
+    if (!hasLoadedCustomersRef.current) {
+      setIsLoading(true);
+    }
     setApiError(null);
     try {
+      const isFormPage = currentPage === 'add-feedback' || currentPage === 'add-followup';
       const customersData = await api.fetchCustomers({
-        search: searchQuery,
-        branch: selectedBranch,
-        status: selectedStatus,
-        sortBy,
-        sortOrder,
+        search: isFormPage ? '' : searchQuery,
+        branch: isFormPage ? '' : selectedBranch,
+        status: isFormPage ? '' : selectedStatus,
+        sortBy: isFormPage ? 'name' : sortBy,
+        sortOrder: isFormPage ? 'asc' : sortOrder,
       });
       setCustomers(customersData || []);
       setIsApiConnected(true);
+      hasLoadedCustomersRef.current = true;
     } catch (err) {
       console.warn('Customer API unavailable:', err);
       setCustomers([]);
@@ -159,7 +166,7 @@ export function CXProvider({ children }: CXProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, selectedBranch, selectedStatus, sortBy, sortOrder]);
+  }, [searchQuery, selectedBranch, selectedStatus, sortBy, sortOrder, currentPage]);
 
   // Load dashboard stats on mount or when switching to 'dashboard' page
   useEffect(() => {
@@ -168,9 +175,14 @@ export function CXProvider({ children }: CXProviderProps) {
     }
   }, [currentPage, loadDashboardData]);
 
-  // Load customer table list when switching to 'customers', 'add-feedback', or 'add-followup' pages
+  // Reset initial load status when page changes to ensure loader shows on page transitions
   useEffect(() => {
-    if (currentPage === 'customers' || currentPage === 'add-feedback' || currentPage === 'add-followup') {
+    hasLoadedCustomersRef.current = false;
+  }, [currentPage]);
+
+  // Load customer table list when switching to 'dashboard', 'customers', 'add-feedback', or 'add-followup' pages
+  useEffect(() => {
+    if (currentPage === 'dashboard' || currentPage === 'customers' || currentPage === 'add-feedback' || currentPage === 'add-followup') {
       loadCustomerListData();
     }
   }, [currentPage, loadCustomerListData]);
@@ -187,7 +199,13 @@ export function CXProvider({ children }: CXProviderProps) {
   // Compatibility aliases
   const filteredCustomers = customers;
   
-  const filteredFeedbacks = feedbacks;
+  const filteredFeedbacks = useMemo(() => {
+    if (!selectedBranch) return feedbacks;
+    // Create a map of customer ID to branch dynamically
+    const customerBranchMap = new Map(customers.map(c => [c.id, c.branch]));
+    // Filter feedbacks where the customer's branch matches the selected branch
+    return feedbacks.filter(fb => customerBranchMap.get(fb.customer_id) === selectedBranch);
+  }, [feedbacks, customers, selectedBranch]);
 
   const summaryStats = useMemo(() => {
     // If a branch is selected, aggregate from branchStats
