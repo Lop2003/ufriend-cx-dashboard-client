@@ -1,5 +1,6 @@
 import { useCX } from '../../../hooks/useCX';
 import DashboardTable from '../../dashboard/components/DashboardTable';
+import CustomSelect from '../../../components/CustomSelect';
 
 
 
@@ -21,6 +22,26 @@ export default function CustomerListPage() {
   const completed = customers.filter(c => c.status === 'completed').length;
 
   const branches = ["วงเวียนใหญ่", "รังสิต", "ลาดพร้าว", "สยาม"];
+
+  // Custom select options
+  const branchOptions = [
+    { value: '', label: 'สาขา: ทั้งหมด' },
+    ...branches.map(br => ({ value: br, label: br }))
+  ];
+
+  const statusOptions = [
+    { value: '', label: 'สถานะ: ทั้งหมด' },
+    { value: 'active', label: 'ปกติ (Active)', className: 'text-status-active' },
+    { value: 'overdue', label: 'ค้างชำระ (Overdue)', className: 'text-status-overdue' },
+    { value: 'completed', label: 'จบสัญญา (Completed)', className: 'text-status-completed' },
+  ];
+
+  const getStatusActiveClassName = () => {
+    if (selectedStatus === 'overdue') return 'bg-red-50/70 border-red-300 text-status-overdue font-extrabold';
+    if (selectedStatus === 'active') return 'bg-emerald-50/70 border-emerald-300 text-status-active font-extrabold';
+    if (selectedStatus === 'completed') return 'bg-slate-100/80 border-slate-300 text-status-completed font-extrabold';
+    return '';
+  };
 
   return (
     <div className="space-y-6 font-body text-slate-800 antialiased animate-fade-in-up">
@@ -84,28 +105,23 @@ export default function CustomerListPage() {
           />
         </div>
 
-        <div className="flex gap-3 w-full md:w-auto">
-          <select
+        <div className="flex gap-3 w-full md:w-auto shrink-0">
+          {/* Reusable Custom Branch Select */}
+          <CustomSelect
             value={selectedBranch}
-            onChange={(e) => setSelectedBranch(e.target.value)}
-            className="px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-all text-gray-700 soft-recessed border-0 w-full md:w-40"
-          >
-            <option value="">สาขา: ทั้งหมด</option>
-            {branches.map((br, idx) => (
-              <option key={idx} value={br}>{br}</option>
-            ))}
-          </select>
+            onChange={setSelectedBranch}
+            options={branchOptions}
+            placeholder="สาขา: ทั้งหมด"
+          />
 
-          <select
+          {/* Reusable Custom Status Select */}
+          <CustomSelect
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-all text-gray-700 soft-recessed border-0 w-full md:w-40"
-          >
-            <option value="">สถานะ: ทั้งหมด</option>
-            <option value="active">ปกติ (Active)</option>
-            <option value="overdue">ค้างชำระ (Overdue)</option>
-            <option value="completed">จบสัญญา (Completed)</option>
-          </select>
+            onChange={setSelectedStatus}
+            options={statusOptions}
+            placeholder="สถานะ: ทั้งหมด"
+            activeClassName={getStatusActiveClassName()}
+          />
         </div>
       </div>
 

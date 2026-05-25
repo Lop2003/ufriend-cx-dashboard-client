@@ -3,6 +3,7 @@ import { useCX } from '../../../hooks/useCX';
 import SummaryCards from '../components/SummaryCards';
 import DashboardChart from '../components/DashboardChart';
 import DashboardTable from '../components/DashboardTable';
+import CustomSelect from '../../../components/CustomSelect';
 import * as api from '../../../services/api';
 
 
@@ -35,6 +36,26 @@ export default function DashboardPage() {
     } finally {
       setIsFetchingBranches(false);
     }
+  };
+
+  // Custom select options
+  const branchOptions = [
+    { value: '', label: 'สาขา: ทั้งหมด' },
+    ...branches.map(br => ({ value: br, label: br }))
+  ];
+
+  const statusOptions = [
+    { value: '', label: 'สถานะ: ทั้งหมด' },
+    { value: 'active', label: 'ปกติ (Active)', className: 'text-status-active' },
+    { value: 'overdue', label: 'ค้างชำระ (Overdue)', className: 'text-status-overdue' },
+    { value: 'completed', label: 'จบสัญญา (Completed)', className: 'text-status-completed' },
+  ];
+
+  const getStatusActiveClassName = () => {
+    if (selectedStatus === 'overdue') return 'bg-red-50/70 border-red-300 text-status-overdue font-extrabold';
+    if (selectedStatus === 'active') return 'bg-emerald-50/70 border-emerald-300 text-status-active font-extrabold';
+    if (selectedStatus === 'completed') return 'bg-slate-100/80 border-slate-300 text-status-completed font-extrabold';
+    return '';
   };
 
   return (
@@ -103,37 +124,23 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div className="flex gap-3 w-full md:w-auto shrink-0">
-              <div className="relative w-full md:w-40">
-                <select
-                  value={selectedBranch}
-                  onFocus={handleFocusBranches}
-                  onClick={handleFocusBranches}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
-                  className="pl-3 pr-8 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-all text-gray-700 soft-recessed border-0 w-full cursor-pointer appearance-none bg-slate-50/50 rounded-xl"
-                >
-                  <option value="">สาขา: ทั้งหมด</option>
-                  {branches.map((br, idx) => (
-                    <option key={idx} value={br}>{br}</option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                  </svg>
-                </div>
-              </div>
+            <div className="flex gap-3 w-full md:w-auto shrink-0" onMouseEnter={handleFocusBranches}>
+              {/* Reusable Custom Branch Select */}
+              <CustomSelect
+                value={selectedBranch}
+                onChange={setSelectedBranch}
+                options={branchOptions}
+                placeholder="สาขา: ทั้งหมด"
+              />
 
-              <select
+              {/* Reusable Custom Status Select */}
+              <CustomSelect
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-all text-gray-700 soft-recessed border-0 w-full md:w-40 cursor-pointer bg-slate-50/50 rounded-xl"
-              >
-                <option value="">สถานะ: ทั้งหมด</option>
-                <option value="active">ปกติ (Active)</option>
-                <option value="overdue">ค้างชำระ (Overdue)</option>
-                <option value="completed">จบสัญญา (Completed)</option>
-              </select>
+                onChange={setSelectedStatus}
+                options={statusOptions}
+                placeholder="สถานะ: ทั้งหมด"
+                activeClassName={getStatusActiveClassName()}
+              />
 
               {(searchQuery || selectedStatus || selectedBranch) && (
                 <button
