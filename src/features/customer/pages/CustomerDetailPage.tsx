@@ -27,7 +27,7 @@ const SENTIMENT_MAP = {
 const FOLLOW_UP_TYPE_MAP = {
   payment_remind: { label: 'โทรแจ้งเตือนยอดชำระ', nodeColor: 'bg-status-overdue text-white' },
   feedback_reply: { label: 'ตอบกลับความพึงพอใจ', nodeColor: 'bg-primary text-white' },
-  general: { label: 'บันทึกการติดตามทั่วไป', nodeColor: 'bg-slate-400 text-white' },
+  promotion: { label: 'โทรเสนอโปรโมชั่นพิเศษ', nodeColor: 'bg-indigo-500 text-white' },
 } as const;
 
 const RatingStar = ({ rating }: { rating: number }) => (
@@ -123,7 +123,7 @@ export default function CustomerDetailPage({
   }
 
   // Use API data
-  const customerFeedbacks = apiDetail?.feedbacks || [];
+  const customerFeedbacks = [...(apiDetail?.feedbacks || [])].sort((a, b) => b.rating - a.rating);
   const customerFollowUps = apiDetail?.follow_ups || [];
 
   return (
@@ -234,7 +234,7 @@ export default function CustomerDetailPage({
           ) : (
             <div className="relative space-y-6 max-h-[400px] overflow-y-auto pr-1 py-2 pl-1 ml-1">
               {customerFollowUps.map((fu, idx) => {
-                const typeMeta = FOLLOW_UP_TYPE_MAP[fu.type] || FOLLOW_UP_TYPE_MAP.general;
+                const typeMeta = FOLLOW_UP_TYPE_MAP[fu.type] || FOLLOW_UP_TYPE_MAP.promotion;
 
                 return (
                   <div key={fu.id} className="relative pl-8 group">

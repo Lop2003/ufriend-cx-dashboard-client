@@ -114,7 +114,7 @@ export async function createFeedback(payload: CreateFeedbackPayload): Promise<Fe
 // ─── Follow-Up ───────────────────────────────────────────────────────
 export interface CreateFollowUpPayload {
   customer_id: string;
-  type: 'payment_remind' | 'feedback_reply' | 'general';
+  type: 'payment_remind' | 'feedback_reply' | 'promotion';
   note: string;
 }
 

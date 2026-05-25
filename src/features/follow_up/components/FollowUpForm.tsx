@@ -4,7 +4,7 @@ import useCX from '../../../hooks/useCX';
 export default function FollowUpForm() {
   const { selectedCustomerId, customers, addFollowUp, setCurrentPage } = useCX();
   const [customerId, setCustomerId] = useState(selectedCustomerId || '');
-  const [type, setType] = useState<'payment_remind' | 'feedback_reply' | 'general'>('payment_remind');
+  const [type, setType] = useState<'payment_remind' | 'feedback_reply' | 'promotion'>('payment_remind');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
 
@@ -121,7 +121,7 @@ export default function FollowUpForm() {
           >
             <option value="payment_remind">โทรแจ้งเตือนการค้างชำระเงิน (Payment Remind)</option>
             <option value="feedback_reply">โทรขอโทษและชี้แจงคำติชมความพึงพอใจ (Feedback Reply)</option>
-            <option value="general">บันทึกการโทรสอบถามทั่วไปหรือด้านบริการอื่นๆ (General)</option>
+            <option value="promotion">โทรแจ้งเสนอโปรโมชั่นพิเศษ (Promotion)</option>
           </select>
         </div>
 
