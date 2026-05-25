@@ -68,6 +68,7 @@ export function CXProvider({ children }: CXProviderProps) {
 
   // Data State
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [followUps] = useState<FollowUp[]>([]);
   const [branchStats, setBranchStats] = useState<api.BranchStatData[]>([]);
@@ -111,7 +112,7 @@ export function CXProvider({ children }: CXProviderProps) {
       ]);
       setApiSummary(summaryData);
       setFeedbacks(feedbacksData);
-      setCustomers(customersData || []);
+      setAllCustomers(customersData || []);
       setIsApiConnected(true);
     } catch (err) {
       console.error('Dashboard API unavailable:', err);
@@ -202,10 +203,10 @@ export function CXProvider({ children }: CXProviderProps) {
   const filteredFeedbacks = useMemo(() => {
     if (!selectedBranch) return feedbacks;
     // Create a map of customer ID to branch dynamically
-    const customerBranchMap = new Map(customers.map(c => [c.id, c.branch]));
+    const customerBranchMap = new Map(allCustomers.map(c => [c.id, c.branch]));
     // Filter feedbacks where the customer's branch matches the selected branch
     return feedbacks.filter(fb => customerBranchMap.get(fb.customer_id) === selectedBranch);
-  }, [feedbacks, customers, selectedBranch]);
+  }, [feedbacks, allCustomers, selectedBranch]);
 
   const summaryStats = useMemo(() => {
     // If a branch is selected, aggregate from branchStats
@@ -235,11 +236,13 @@ export function CXProvider({ children }: CXProviderProps) {
     }
 
     // Fallback/Mock mode: compute from static data
-    const totalCustomers = customers.length;
+    const totalCustomers = allCustomers.length > 0 ? allCustomers.length : customers.length;
     const avgRating = feedbacks.length > 0
       ? (feedbacks.reduce((acc, fb) => acc + fb.rating, 0) / feedbacks.length).toFixed(1)
       : '0.0';
-    const overdueCount = customers.filter(c => c.status === 'overdue').length;
+    const overdueCount = allCustomers.length > 0
+      ? allCustomers.filter(c => c.status === 'overdue').length
+      : customers.filter(c => c.status === 'overdue').length;
     const positiveFeedbacks = feedbacks.filter(fb => fb.sentiment === 'positive').length;
     const satisfactionRate = feedbacks.length > 0
       ? ((positiveFeedbacks / feedbacks.length) * 100).toFixed(0)
