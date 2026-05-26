@@ -22,7 +22,7 @@ export interface FeedbackSub {
 
 export interface FollowUpSub {
   id: string;
-  type: 'payment_remind' | 'feedback_reply' | 'general';
+  type: 'payment_remind' | 'feedback_reply' | 'promotion';
   note: string;
   status: 'pending' | 'done';
   created_at: string;
@@ -54,7 +54,7 @@ export interface Feedback {
 export interface FollowUp {
   id: string;
   customer_id: string;
-  type: 'payment_remind' | 'feedback_reply' | 'general';
+  type: 'payment_remind' | 'feedback_reply' | 'promotion';
   note: string;
   status: 'pending' | 'done';
   created_at: string;

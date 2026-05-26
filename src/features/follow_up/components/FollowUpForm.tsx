@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import useCX from '../../../hooks/useCX';
+import SearchableCustomerDropdown from '../../../components/SearchableCustomerDropdown';
 
 export default function FollowUpForm() {
   const { selectedCustomerId, customers, addFollowUp, setCurrentPage } = useCX();
   const [customerId, setCustomerId] = useState(selectedCustomerId || '');
-  const [type, setType] = useState<'payment_remind' | 'feedback_reply' | 'general'>('payment_remind');
+  const [type, setType] = useState<'payment_remind' | 'feedback_reply' | 'promotion'>('payment_remind');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+
 
   useEffect(() => {
     if (selectedCustomerId) {
@@ -23,10 +25,10 @@ export default function FollowUpForm() {
   }, [customerId, selectedCust]);
 
   const handleCancel = () => {
-    setCurrentPage('dashboard');
+    setCurrentPage('customers');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerId) {
       setError('กรุณาเลือกรายชื่อลูกค้าเพื่อบันทึกการติดตาม');
@@ -37,11 +39,16 @@ export default function FollowUpForm() {
       return;
     }
 
-    addFollowUp({
+    const success = await addFollowUp({
       customer_id: customerId,
       type,
       note: note.trim()
     });
+
+    if (success) {
+      setNote('');
+      setError('');
+    }
   };
 
   return (
@@ -82,27 +89,17 @@ export default function FollowUpForm() {
       )}
 
       <div className="space-y-3.5">
-        {/* Customer select */}
-        <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-            เลือกบัญชีลูกค้าสัญญา *
-          </label>
-          <select
-            value={customerId}
-            onChange={(e) => {
-              setCustomerId(e.target.value);
-              setError('');
-            }}
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-semibold bg-slate-50/50 hover:bg-slate-50/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-gray-800 shadow-sm"
-          >
-            <option value="">-- กรุณาเลือกลูกค้าสัญญา --</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.product} / {c.status === 'overdue' ? 'ค้างชำระ' : 'ปกติ'} / สาขา{c.branch})
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Reusable Searchable Customer Dropdown */}
+        <SearchableCustomerDropdown
+          customers={customers}
+          selectedCustomerId={customerId}
+          onChange={(id) => {
+            setCustomerId(id);
+            setError('');
+          }}
+          label="เลือกบัญชีลูกค้าสัญญา (ค้นหารายชื่อได้) *"
+          showOverdueBadges={true}
+        />
 
         {/* Type select */}
         <div>
@@ -116,7 +113,7 @@ export default function FollowUpForm() {
           >
             <option value="payment_remind">โทรแจ้งเตือนการค้างชำระเงิน (Payment Remind)</option>
             <option value="feedback_reply">โทรขอโทษและชี้แจงคำติชมความพึงพอใจ (Feedback Reply)</option>
-            <option value="general">บันทึกการโทรสอบถามทั่วไปหรือด้านบริการอื่นๆ (General)</option>
+            <option value="promotion">โทรแจ้งเสนอโปรโมชั่นพิเศษ (Promotion)</option>
           </select>
         </div>
 

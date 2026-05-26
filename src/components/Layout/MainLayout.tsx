@@ -10,21 +10,11 @@ interface MainLayoutProps {
 export default function MainLayout({ children }: MainLayoutProps) {
   const {
     currentPage,
-    customers,
-    searchQuery,
-    setSearchQuery,
-    selectedBranch,
-    setSelectedBranch,
-    selectedStatus,
-    setSelectedStatus,
   } = useCX();
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
-  // Dynamic list of branches
-  const uniqueBranches = Array.from(new Set(customers.map((c) => c.branch)));
-
   return (
     <div
       className="flex flex-col md:flex-row min-h-screen md:h-screen overflow-y-auto md:overflow-hidden font-body text-slate-800 antialiased p-0 sm:p-4 md:p-6 gap-0 md:gap-6 bg-cover bg-center bg-no-repeat"
@@ -80,51 +70,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </>
               )}
             </div>
-
-            {/* Integrated Top Filter Deck */}
-            {currentPage === 'dashboard' ? (
-              <div className="hidden md:flex items-center gap-3 flex-1 max-w-xl mx-4">
-                {/* Search Box */}
-                <div className="relative flex-1">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 pointer-events-none z-10">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </span>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-4 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-all placeholder:text-gray-400 text-gray-800 soft-recessed border-0"
-                    placeholder="ค้นหาชื่อลูกค้า, สินค้า..."
-                  />
-                </div>
-
-                {/* Branch Dropdown */}
-                <select
-                  value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
-                  className="px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-all text-gray-700 soft-recessed border-0 max-w-[150px]"
-                >
-                  <option value="">สาขา: ทั้งหมด</option>
-                  {uniqueBranches.map((br, idx) => (
-                    <option key={idx} value={br}>{br}</option>
-                  ))}
-                </select>
-
-                {/* Status Dropdown */}
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-all text-gray-700 soft-recessed border-0 max-w-[150px]"
-                >
-                  <option value="">สถานะ: ทั้งหมด</option>
-                  <option value="active">ปกติ (Active)</option>
-                  <option value="overdue">ค้างชำระ (Overdue)</option>
-                  <option value="completed">จบสัญญา (Completed)</option>
-                </select>
-              </div>
-            ) : null}
 
             {/* User Profile avatar on the far right */}
             <div className="flex items-center gap-3 shrink-0 ml-auto">

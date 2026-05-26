@@ -1,9 +1,14 @@
+import { useState, useEffect } from 'react';
 import useCX from '../../../hooks/useCX';
 import CustomerInfo from '../components/CustomerInfo';
+import { fetchCustomerDetail, updateFollowUpStatus } from '../../../services/api';
+import { showToast } from '../../../components/Toast';
+import type { Feedback, FollowUp } from '../../../types';
 
 interface CustomerDetailPageProps {
   onBack?: () => void;
   onAddFollowUp?: () => void;
+  onAddFeedback?: () => void;
 }
 
 // Mappers for translating data values to beautiful Thai labels
@@ -23,7 +28,7 @@ const SENTIMENT_MAP = {
 const FOLLOW_UP_TYPE_MAP = {
   payment_remind: { label: 'โทรแจ้งเตือนยอดชำระ', nodeColor: 'bg-status-overdue text-white' },
   feedback_reply: { label: 'ตอบกลับความพึงพอใจ', nodeColor: 'bg-primary text-white' },
-  general: { label: 'บันทึกการติดตามทั่วไป', nodeColor: 'bg-slate-400 text-white' },
+  promotion: { label: 'โทรเสนอโปรโมชั่นพิเศษ', nodeColor: 'bg-indigo-500 text-white' },
 } as const;
 
 const RatingStar = ({ rating }: { rating: number }) => (
@@ -43,15 +48,48 @@ const RatingStar = ({ rating }: { rating: number }) => (
 export default function CustomerDetailPage({
   onBack,
   onAddFollowUp,
+  onAddFeedback,
 }: CustomerDetailPageProps) {
   const { 
     selectedCustomerId, 
     customers, 
-    feedbacks, 
-    followUps, 
     setCurrentPage, 
-    setIsDetailModalOpen 
+    setIsDetailModalOpen,
   } = useCX();
+
+  // API-fetched detail state
+  const [apiDetail, setApiDetail] = useState<{
+    feedbacks: Feedback[];
+    follow_ups: FollowUp[];
+  } | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  // Fetch from API when customer is selected
+  // Deduplication of concurrent requests is handled at the API layer (api.ts)
+  useEffect(() => {
+    if (!selectedCustomerId) return;
+
+    let cancelled = false;
+    setDetailLoading(true);
+
+    fetchCustomerDetail(selectedCustomerId)
+      .then((data) => {
+        if (!cancelled) {
+          setApiDetail({
+            feedbacks: data.feedbacks || [],
+            follow_ups: data.follow_ups || [],
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setApiDetail(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [selectedCustomerId]);
 
   const customer = customers.find((c) => c.id === selectedCustomerId);
 
@@ -60,7 +98,7 @@ export default function CustomerDetailPage({
     if (onBack) {
       onBack();
     } else {
-      setCurrentPage('dashboard');
+      setCurrentPage('customers');
     }
   };
 
@@ -70,6 +108,15 @@ export default function CustomerDetailPage({
     } else {
       setIsDetailModalOpen(false);
       setCurrentPage('add-followup');
+    }
+  };
+
+  const handleAddFeedback = () => {
+    if (onAddFeedback) {
+      onAddFeedback();
+    } else {
+      setIsDetailModalOpen(false);
+      setCurrentPage('add-feedback');
     }
   };
 
@@ -86,11 +133,19 @@ export default function CustomerDetailPage({
     );
   }
 
-  const customerFeedbacks = feedbacks.filter((fb) => fb.customer_id === customer.id);
-  const customerFollowUps = followUps.filter((fu) => fu.customer_id === customer.id);
+  // Use API data
+  const customerFeedbacks = [...(apiDetail?.feedbacks || [])].sort((a, b) => b.rating - a.rating);
+  const customerFollowUps = apiDetail?.follow_ups || [];
 
   return (
     <div className="space-y-6 font-body text-slate-800 antialiased">
+      {/* API Detail Loading Indicator */}
+      {detailLoading && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700 font-bold animate-pulse">
+          <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+          กำลังโหลดข้อมูลเชิงลึกจาก API...
+        </div>
+      )}
       {/* Top action bar */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <button
@@ -103,15 +158,27 @@ export default function CustomerDetailPage({
           ย้อนกลับแดชบอร์ดหลัก
         </button>
 
-        <button
-          onClick={handleAddFollowUp}
-          className="bg-primary hover:bg-primary-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 hover-shimmer w-full sm:w-auto justify-center"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-          บันทึกการติดตามลูกค้า
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
+          <button
+            onClick={handleAddFeedback}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 hover-shimmer w-full sm:w-auto justify-center cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            บันทึกคำติชมลูกค้า
+          </button>
+
+          <button
+            onClick={handleAddFollowUp}
+            className="bg-primary hover:bg-primary-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 hover-shimmer w-full sm:w-auto justify-center cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            บันทึกการติดตามลูกค้า
+          </button>
+        </div>
       </div>
 
       {/* 📋 Customer Information card */}
@@ -190,7 +257,7 @@ export default function CustomerDetailPage({
           ) : (
             <div className="relative space-y-6 max-h-[400px] overflow-y-auto pr-1 py-2 pl-1 ml-1">
               {customerFollowUps.map((fu, idx) => {
-                const typeMeta = FOLLOW_UP_TYPE_MAP[fu.type] || FOLLOW_UP_TYPE_MAP.general;
+                const typeMeta = FOLLOW_UP_TYPE_MAP[fu.type] || FOLLOW_UP_TYPE_MAP.promotion;
 
                 return (
                   <div key={fu.id} className="relative pl-8 group">
@@ -220,13 +287,33 @@ export default function CustomerDetailPage({
 
                       <div className="flex items-center justify-between pt-1">
                         <span className="text-[10px] text-gray-400 font-bold">โดย: ฝ่ายบริการลูกค้า uFriend</span>
-                        <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-lg border ${
-                          fu.status === 'done'
-                            ? 'bg-emerald-50 text-status-active border-emerald-100/50'
-                            : 'bg-red-50 text-status-overdue border-red-100/50 animate-pulse-slow'
-                        }`}>
-                          {fu.status === 'done' ? 'สำเร็จแล้ว' : 'รอดำเนินการ'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {fu.status === 'pending' && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await updateFollowUpStatus(fu.id, 'done');
+                                  showToast('success', 'อัพเดทสถานะเรียบร้อยแล้ว');
+                                  // Refetch detail to update UI
+                                  const updated = await fetchCustomerDetail(selectedCustomerId);
+                                  setApiDetail({ feedbacks: updated.feedbacks || [], follow_ups: updated.follow_ups || [] });
+                                } catch {
+                                  showToast('error', 'ไม่สามารถอัพเดทสถานะได้');
+                                }
+                              }}
+                              className="text-[9px] font-bold px-2 py-0.5 rounded-lg border bg-primary-light text-primary border-primary/20 hover:bg-primary hover:text-white transition-all cursor-pointer"
+                            >
+                              ✔ เสร็จแล้ว
+                            </button>
+                          )}
+                          <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-lg border ${
+                            fu.status === 'done'
+                              ? 'bg-emerald-50 text-status-active border-emerald-100/50'
+                              : 'bg-red-50 text-status-overdue border-red-100/50 animate-pulse-slow'
+                          }`}>
+                            {fu.status === 'done' ? 'สำเร็จแล้ว' : 'รอดำเนินการ'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>

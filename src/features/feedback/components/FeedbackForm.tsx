@@ -1,19 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useCX from '../../../hooks/useCX';
+import SearchableCustomerDropdown from '../../../components/SearchableCustomerDropdown';
 
 export default function FeedbackForm() {
-  const { customers, addFeedback, setCurrentPage } = useCX();
-  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const { selectedCustomerId: globalSelectedCustomerId, customers, addFeedback, setCurrentPage } = useCX();
+  const [selectedCustomerId, setSelectedCustomerId] = useState(globalSelectedCustomerId || '');
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [category, setCategory] = useState<'service' | 'payment' | 'product' | 'branch'>('service');
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (globalSelectedCustomerId) {
+      setSelectedCustomerId(globalSelectedCustomerId);
+    }
+  }, [globalSelectedCustomerId]);
+
+
   const handleCancel = () => {
-    setCurrentPage('dashboard');
+    setCurrentPage('customers');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCustomerId) {
       setError('กรุณาเลือกบัญชีลูกค้าเพื่อบันทึกคำติชม');
@@ -24,12 +32,20 @@ export default function FeedbackForm() {
       return;
     }
 
-    addFeedback({
+    const success = await addFeedback({
       customer_id: selectedCustomerId,
       rating,
       comment: comment.trim(),
       category
     });
+
+    if (success) {
+      setSelectedCustomerId('');
+      setRating(5);
+      setComment('');
+      setCategory('service');
+      setError('');
+    }
   };
 
   return (
@@ -58,27 +74,16 @@ export default function FeedbackForm() {
       )}
 
       <div className="space-y-3.5">
-        {/* Customer Select */}
-        <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-            เลือกลูกค้าสัญญา *
-          </label>
-          <select
-            value={selectedCustomerId}
-            onChange={(e) => {
-              setSelectedCustomerId(e.target.value);
-              setError('');
-            }}
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-semibold bg-slate-50/50 hover:bg-slate-50/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-gray-800 shadow-sm"
-          >
-            <option value="">-- กรุณาเลือกรายชื่อลูกค้า --</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.product} / สาขา{c.branch})
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Reusable Searchable Customer Dropdown */}
+        <SearchableCustomerDropdown
+          customers={customers}
+          selectedCustomerId={selectedCustomerId}
+          onChange={(id) => {
+            setSelectedCustomerId(id);
+            setError('');
+          }}
+          label="เลือกลูกค้าสัญญา (ค้นหารายชื่อได้) *"
+        />
 
         {/* Rating Stars Selector */}
         <div>
